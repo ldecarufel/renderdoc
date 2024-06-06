@@ -30,8 +30,48 @@
 
 namespace DXILDebug
 {
-struct Debugger : public DXBCContainerDebugger
+typedef rdcstr Id;
+class Debugger;
+struct GlobalState;
+struct BindingSlot
 {
+  BindingSlot() : shaderRegister(UINT32_MAX), registerSpace(UINT32_MAX) {}
+  BindingSlot(uint32_t shaderReg, uint32_t regSpace)
+      : shaderRegister(shaderReg), registerSpace(regSpace)
+  {
+  }
+  BindingSlot(const DXIL::ResourceReference &resRef)
+      : shaderRegister(resRef.resourceBase.regBase), registerSpace(resRef.resourceBase.space)
+  {
+  }
+
+  bool operator<(const BindingSlot &o) const
+  {
+    if(registerSpace != o.registerSpace)
+      return registerSpace < o.registerSpace;
+    return shaderRegister < o.shaderRegister;
+  }
+
+  uint32_t shaderRegister;
+  uint32_t registerSpace;
+};
+
+class DebugAPIWrapper
+{
+};
+
+struct ThreadState
+{
+};
+
+struct GlobalState
+{
+  GlobalState() = default;
+};
+
+class Debugger : public DXBCContainerDebugger
+{
+public:
   Debugger() : DXBCContainerDebugger(true){};
 };
 

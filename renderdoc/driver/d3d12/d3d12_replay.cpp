@@ -414,6 +414,7 @@ BufferDescription D3D12Replay::GetBuffer(ResourceId id)
   ret.length = desc.Width;
 
   ret.creationFlags = BufferCategory::NoFlags;
+  ret.gpuAddress = it->second->GetOriginalVA();
 
   const rdcarray<EventUsage> &usage = m_pDevice->GetQueue()->GetUsage(id);
 
@@ -1963,6 +1964,14 @@ rdcarray<DescriptorAccess> D3D12Replay::GetDescriptorAccess(uint32_t eventId)
         continue;
       }
 
+      // otherwise the access may be to a rootsig element that's not bound if the current event is
+      // not a valid draw or dispatch
+      if(rootIndex >= rootSig.sigelems.size())
+      {
+        access.descriptorStore = ResourceId();
+        continue;
+      }
+
       const D3D12RenderState::SignatureElement &rootEl = rootSig.sigelems[rootIndex];
 
       // this indicates a root parameter
@@ -1981,6 +1990,10 @@ rdcarray<DescriptorAccess> D3D12Replay::GetDescriptorAccess(uint32_t eventId)
         access.byteOffset += (uint32_t)rootEl.offset;
       }
     }
+
+    // remove any invalid / unbound root element accesses
+    ret.removeIf(
+        [](const DescriptorAccess &access) { return access.descriptorStore == ResourceId(); });
   }
 
   return ret;

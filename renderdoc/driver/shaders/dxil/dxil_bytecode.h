@@ -41,6 +41,12 @@ namespace LLVMBC
 struct BlockOrRecord;
 };
 
+namespace DXILDebug
+{
+class Debugger;
+struct ThreadState;
+};
+
 namespace DXIL
 {
 struct BumpAllocator
@@ -113,9 +119,9 @@ struct Type
   static void *operator new(size_t count, BumpAllocator &b) { return b.alloc(count); }
   static void operator delete(void *ptr, BumpAllocator &b) {}
   bool isVoid() const { return type == Scalar && scalarType == Void; }
-  rdcstr toString() const;
+  rdcstr toString(bool dxcStyleFormatting) const;
   rdcstr declFunction(rdcstr funcName, const rdcarray<Instruction *> &args,
-                      const AttributeSet *attrs) const;
+                      const AttributeSet *attrs, bool dxcStyleFormatting) const;
 
   // for scalars, arrays, vectors, pointers
   union
@@ -716,7 +722,7 @@ struct Value
   static constexpr uint32_t VisitedID = 0x00fffffd;
   uint32_t id : 24;
 
-  rdcstr toString(bool withType = false) const;
+  rdcstr toString(bool dxcStyleFormatting, bool withType = false) const;
 
   static void *operator new(size_t count, BumpAllocator &b) { return b.alloc(count); }
   static void operator delete(void *ptr, BumpAllocator &b) {}
@@ -1049,7 +1055,7 @@ struct Constant : public ForwardReferencableValue<Constant>
     return empty;
   }
 
-  rdcstr toString(bool withType = false) const;
+  rdcstr toString(bool dxcStyleFormatting, bool withType = false) const;
 
 private:
   union
@@ -1099,7 +1105,7 @@ struct DIBase
 
   DIBase(Type t) : type(t) {}
   virtual ~DIBase() = default;
-  virtual rdcstr toString() const = 0;
+  virtual rdcstr toString(bool dxcStyleFormatting) const = 0;
   virtual void setID(uint32_t ID) {}
   template <typename Derived>
   const Derived *As() const
@@ -1125,7 +1131,7 @@ struct DebugLocation
     return line == o.line && col == o.col && scope == o.scope && inlinedAt == o.inlinedAt;
   }
 
-  rdcstr toString() const;
+  rdcstr toString(bool dxcStyleFormatting) const;
 };
 
 struct Metadata : public Value
@@ -1147,8 +1153,8 @@ struct Metadata : public Value
   DIBase *dwarf = NULL;
   DebugLocation *debugLoc = NULL;
 
-  rdcstr refString() const;
-  rdcstr valString() const;
+  rdcstr refString(bool dxcStyleFormatting) const;
+  rdcstr valString(bool dxcStyleFormatting) const;
 };
 
 // loose wrapper around an array for metadata pointer. This creates metadata nodes on demand because
@@ -1419,6 +1425,16 @@ struct EntryPointInterface
   struct ResourceBase
   {
     ResourceBase(ResourceClass resourceClass, const Metadata *resourceBase);
+    bool MatchesBinding(uint32_t lowerBound, uint32_t upperBound, uint32_t spaceID) const
+    {
+      if(space != spaceID)
+        return false;
+      if(regBase > lowerBound)
+        return false;
+      if(regBase + regCount <= upperBound)
+        return false;
+      return true;
+    }
     uint32_t id;
     const Type *type;
     rdcstr name;
@@ -1477,7 +1493,8 @@ struct EntryPointInterface
 
 struct ResourceReference
 {
-  ResourceReference(rdcstr handleStr, const EntryPointInterface::ResourceBase &resBase, uint32_t idx)
+  ResourceReference(const rdcstr &handleStr, const EntryPointInterface::ResourceBase &resBase,
+                    uint32_t idx)
       : handleID(handleStr), resourceBase(resBase), resourceIndex(idx){};
 
   rdcstr handleID;
@@ -1487,6 +1504,8 @@ struct ResourceReference
 
 class Program : public DXBC::IDebugInfo
 {
+  friend DXILDebug::Debugger;
+  friend DXILDebug::ThreadState;
 public:
   Program(const byte *bytes, size_t length);
   Program(const Program &o) = delete;
@@ -1501,9 +1520,7 @@ public:
   rdcstr GetDebugStatus();
   rdcarray<ShaderEntryPoint> GetEntryPoints();
   void FillEntryPointInterfaces();
-  rdcstr GetResourceReferenceName(ResourceClass resClass, const BindingSlot &slot) const;
-  // false means stop processing
-  void ProcessFunctions(std::function<bool(const Function *)> callback) const;
+  size_t GetInstructionCount() const;
   void FillRayPayloads(
       Program *executable,
       rdcflatmap<ShaderEntryPoint, rdcpair<DXBC::CBufferVariableType, DXBC::CBufferVariableType>>
@@ -1530,6 +1547,8 @@ public:
 
   const Metadata *GetMetadataByName(const rdcstr &name) const;
   uint32_t GetDirectHeapAcessCount() const { return m_directHeapAccessCount; }
+
+  static char GetDXILIdentifier(const bool dxcStyle) { return dxcStyle ? '%' : '_'; }
 protected:
   void Parse(const DXBC::Reflection *reflection);
   void SettleIDs();
@@ -1552,6 +1571,9 @@ protected:
   void AssignMetaSlot(rdcarray<Metadata *> &metaSlots, uint32_t &nextMetaSlot, DebugLocation &l);
 
   const ResourceReference *GetResourceReference(const rdcstr &handleStr) const;
+  rdcstr GetHandleAlias(const rdcstr &handleStr) const;
+  static void MakeResultId(const Instruction &inst, rdcstr &resultId);
+  rdcstr GetArgId(const Instruction &inst, uint32_t arg) const;
 
   const Metadata *FindMetadata(uint32_t slot) const;
   rdcstr ArgToString(const Value *v, bool withTypes, const rdcstr &attrString = "") const;
@@ -1622,6 +1644,8 @@ protected:
 
   rdcarray<EntryPointInterface> m_EntryPointInterfaces;
   std::map<rdcstr, size_t> m_ResourceHandles;
+  std::map<rdcstr, rdcstr> m_SsaAliases;
+
   rdcarray<ResourceReference> m_ResourceReferences;
   rdcstr m_Disassembly;
   int m_DisassemblyInstructionLine;
@@ -1635,7 +1659,23 @@ rdcstr escapeString(const rdcstr &str);
 rdcstr escapeStringIfNeeded(const rdcstr &name);
 
 template <typename T>
-bool getival(const Value *v, T &out);
+bool getival(const Value *v, T &out)
+{
+  if(const Constant *c = cast<Constant>(v))
+  {
+    out = T(c->getU64());
+    return true;
+  }
+  else if(const Literal *lit = cast<Literal>(v))
+  {
+    out = T(lit->literal);
+    return true;
+  }
+  out = T();
+  return false;
+}
+
+bool isUndef(const Value *v);
 
 };    // namespace DXIL
 
@@ -1644,3 +1684,4 @@ DECLARE_STRINGISE_TYPE(DXIL::InstructionFlags);
 DECLARE_STRINGISE_TYPE(DXIL::AtomicBinOpCode);
 DECLARE_STRINGISE_TYPE(DXIL::Operation);
 DECLARE_STRINGISE_TYPE(DXIL::DXOp);
+DECLARE_STRINGISE_TYPE(DXIL::Type::TypeKind);

@@ -695,6 +695,10 @@ D3D12RaytracingResourceAndUtilHandler::D3D12RaytracingResourceAndUtilHandler(Wra
       m_gpuSyncHandle(NULL),
       m_gpuSyncCounter(0u)
 {
+}
+
+void D3D12RaytracingResourceAndUtilHandler::CreateInternalResources()
+{
   if(m_wrappedDevice)
   {
     ID3D12Device *realDevice = m_wrappedDevice->GetReal();
@@ -833,6 +837,8 @@ PatchedRayDispatch D3D12RaytracingResourceAndUtilHandler::PatchRayDispatch(
 
   D3D12GpuBuffer *scratchBuffer = NULL;
 
+  RayDispatchPatchCB cbufferData = {};
+
   uint32_t patchDataSize = 0;
 
   const uint32_t raygenOffs = patchDataSize;
@@ -849,6 +855,30 @@ PatchedRayDispatch D3D12RaytracingResourceAndUtilHandler::PatchRayDispatch(
 
   const uint32_t callOffs = patchDataSize;
   patchDataSize += (uint32_t)desc.CallableShaderTable.SizeInBytes;
+
+  cbufferData.raydispatch_missoffs = missOffs;
+  cbufferData.raydispatch_missstride = (uint32_t)desc.MissShaderTable.StrideInBytes;
+  if(desc.MissShaderTable.SizeInBytes > 0)
+    cbufferData.raydispatch_misscount =
+        desc.MissShaderTable.StrideInBytes == 0
+            ? 1
+            : uint32_t(desc.MissShaderTable.SizeInBytes / desc.MissShaderTable.StrideInBytes);
+
+  cbufferData.raydispatch_hitoffs = hitOffs;
+  cbufferData.raydispatch_hitstride = (uint32_t)desc.HitGroupTable.StrideInBytes;
+  if(desc.HitGroupTable.SizeInBytes > 0)
+    cbufferData.raydispatch_hitcount =
+        desc.HitGroupTable.StrideInBytes == 0
+            ? 1
+            : uint32_t(desc.HitGroupTable.SizeInBytes / desc.HitGroupTable.StrideInBytes);
+
+  cbufferData.raydispatch_calloffs = callOffs;
+  cbufferData.raydispatch_callstride = (uint32_t)desc.CallableShaderTable.StrideInBytes;
+  if(desc.CallableShaderTable.SizeInBytes > 0)
+    cbufferData.raydispatch_callcount =
+        desc.CallableShaderTable.StrideInBytes == 0
+            ? 1
+            : uint32_t(desc.CallableShaderTable.SizeInBytes / desc.CallableShaderTable.StrideInBytes);
 
   D3D12GpuBufferAllocator::Inst()->Alloc(
       D3D12GpuBufferHeapType::DefaultHeapWithUav, D3D12GpuBufferHeapMemoryFlag::Default,
@@ -965,32 +995,6 @@ PatchedRayDispatch D3D12RaytracingResourceAndUtilHandler::PatchRayDispatch(
     unwrappedCmd->ResourceBarrier(1, &barrier);
   }
 
-  RayDispatchPatchCB cbufferData = {};
-
-  cbufferData.raydispatch_missoffs = missOffs;
-  cbufferData.raydispatch_missstride = (uint32_t)desc.MissShaderTable.StrideInBytes;
-  if(desc.MissShaderTable.SizeInBytes > 0)
-    cbufferData.raydispatch_misscount =
-        desc.MissShaderTable.StrideInBytes == 0
-            ? 1
-            : uint32_t(desc.MissShaderTable.SizeInBytes / desc.MissShaderTable.StrideInBytes);
-
-  cbufferData.raydispatch_hitoffs = hitOffs;
-  cbufferData.raydispatch_hitstride = (uint32_t)desc.HitGroupTable.StrideInBytes;
-  if(desc.HitGroupTable.SizeInBytes > 0)
-    cbufferData.raydispatch_hitcount =
-        desc.HitGroupTable.StrideInBytes == 0
-            ? 1
-            : uint32_t(desc.HitGroupTable.SizeInBytes / desc.HitGroupTable.StrideInBytes);
-
-  cbufferData.raydispatch_calloffs = callOffs;
-  cbufferData.raydispatch_callstride = (uint32_t)desc.CallableShaderTable.StrideInBytes;
-  if(desc.CallableShaderTable.SizeInBytes > 0)
-    cbufferData.raydispatch_callcount =
-        desc.CallableShaderTable.StrideInBytes == 0
-            ? 1
-            : uint32_t(desc.CallableShaderTable.SizeInBytes / desc.CallableShaderTable.StrideInBytes);
-
   RDCCOMPILE_ASSERT(WRAPPED_DESCRIPTOR_STRIDE == sizeof(D3D12Descriptor),
                     "Shader descriptor stride is wrong");
 
@@ -1064,9 +1068,12 @@ void D3D12RaytracingResourceAndUtilHandler::PrepareRayDispatchBuffer(
 
     bytebuf lookupData;
 
-    const size_t ObjectLookupStride = sizeof(ResourceId) + sizeof(uint32_t);
+    const size_t ObjectLookupStride = sizeof(StateObjectLookup);
     const size_t RecordDataStride = sizeof(D3D12ShaderExportDatabase::ExportedIdentifier);
-    const size_t RootSigStride = sizeof(uint32_t) * 32;
+    const size_t RootSigStride = sizeof(LocalRootSigData);
+
+    RDCCOMPILE_ASSERT(int(ObjectLookupStride / 8) * 8 == ObjectLookupStride, "Not aligned");
+    RDCCOMPILE_ASSERT(RecordDataStride == sizeof(ShaderRecordData), "Not identically sized");
 
     size_t numExports = 0;
     for(size_t i = 0; i < m_ExportDatabases.size(); i++)
@@ -1238,7 +1245,7 @@ void D3D12RaytracingResourceAndUtilHandler::InitRayDispatchPatchingResources()
           (void **)&m_RayPatchingData.rootSig);
 
       if(!SUCCEEDED(result))
-        RDCERR("Unable to create root signature for patching the BLAS");
+        RDCERR("Unable to create root signature for dispatch patching");
 
       // PipelineState
       ID3DBlob *shader = NULL;
@@ -1259,7 +1266,11 @@ void D3D12RaytracingResourceAndUtilHandler::InitRayDispatchPatchingResources()
             &pipeline, __uuidof(ID3D12PipelineState), (void **)&m_RayPatchingData.pipe);
 
         if(!SUCCEEDED(result))
-          RDCERR("Unable to create pipeline for patching the BLAS");
+          RDCERR("Unable to create pipeline for dispatch patching");
+      }
+      else
+      {
+        RDCERR("Failed to get shader for dispatch patching");
       }
 
       SAFE_RELEASE(rootSig);

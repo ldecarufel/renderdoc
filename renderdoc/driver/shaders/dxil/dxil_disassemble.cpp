@@ -38,9 +38,6 @@
 
 namespace DXIL
 {
-static bool dxcStyleFormatting = true;
-static char dxilIdentifier = '%';
-
 bool needsEscaping(const rdcstr &name)
 {
   return name.find_first_not_of(
@@ -79,23 +76,6 @@ bool isUndef(const Value *v)
 {
   if(const Constant *c = cast<Constant>(v))
     return c->isUndef();
-  return false;
-}
-
-template <typename T>
-bool getival(const Value *v, T &out)
-{
-  if(const Constant *c = cast<Constant>(v))
-  {
-    out = T(c->getU64());
-    return true;
-  }
-  else if(const Literal *lit = cast<Literal>(v))
-  {
-    out = T(c->getU64());
-    return true;
-  }
-  out = T();
   return false;
 }
 
@@ -365,6 +345,267 @@ static const char *dxOpFunctionNames[] = {
 "dx.op.sampleCmpBias",
 "dx.op.startVertexLocation",
 "dx.op.startInstanceLocation",
+};
+
+static const char *dxcOpNames[] = {
+"TempRegLoad(index)",
+"TempRegStore(index,value)",
+"MinPrecXRegLoad(regIndex,index,component)",
+"MinPrecXRegStore(regIndex,index,component,value)",
+"LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)",
+"StoreOutput(outputSigId,rowIndex,colIndex,value)",
+"FAbs(value)",
+"Saturate(value)",
+"IsNaN(value)",
+"IsInf(value)",
+"IsFinite(value)",
+"IsNormal(value)",
+"Cos(value)",
+"Sin(value)",
+"Tan(value)",
+"Acos(value)",
+"Asin(value)",
+"Atan(value)",
+"Hcos(value)",
+"Hsin(value)",
+"Htan(value)",
+"Exp(value)",
+"Frc(value)",
+"Log(value)",
+"Sqrt(value)",
+"Rsqrt(value)",
+"Round_ne(value)",
+"Round_ni(value)",
+"Round_pi(value)",
+"Round_z(value)",
+"Bfrev(value)",
+"Countbits(value)",
+"FirstbitLo(value)",
+"FirstbitHi(value)",
+"FirstbitSHi(value)",
+"FMax(a,b)",
+"FMin(a,b)",
+"IMax(a,b)",
+"IMin(a,b)",
+"UMax(a,b)",
+"UMin(a,b)",
+"IMul(a,b)",
+"UMul(a,b)",
+"UDiv(a,b)",
+"UAddc(a,b)",
+"USubb(a,b)",
+"FMad(a,b,c)",
+"Fma(a,b,c)",
+"IMad(a,b,c)",
+"UMad(a,b,c)",
+"Msad(a,b,c)",
+"Ibfe(a,b,c)",
+"Ubfe(a,b,c)",
+"Bfi(width,offset,value,replacedValue)",
+"Dot2(ax,ay,bx,by)",
+"Dot3(ax,ay,az,bx,by,bz)",
+"Dot4(ax,ay,az,aw,bx,by,bz,bw)",
+"CreateHandle(resourceClass,rangeId,index,nonUniformIndex)",
+"CBufferLoad(handle,byteOffset,alignment)",
+"CBufferLoadLegacy(handle,regIndex)",
+"Sample(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,clamp)",
+"SampleBias(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,bias,clamp)",
+"SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)",
+"SampleGrad(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,ddx0,ddx1,ddx2,ddy0,ddy1,ddy2,clamp)",
+"SampleCmp(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue,clamp)",
+"SampleCmpLevelZero(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue)",
+"TextureLoad(srv,mipLevelOrSampleCount,coord0,coord1,coord2,offset0,offset1,offset2)",
+"TextureStore(srv,coord0,coord1,coord2,value0,value1,value2,value3,mask)",
+"BufferLoad(srv,index,wot)",
+"BufferStore(uav,coord0,coord1,value0,value1,value2,value3,mask)",
+"BufferUpdateCounter(uav,inc)",
+"CheckAccessFullyMapped(status)",
+"GetDimensions(handle,mipLevel)",
+"TextureGather(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,channel)",
+"TextureGatherCmp(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,channel,compareValue)",
+"Texture2DMSGetSamplePosition(srv,index)",
+"RenderTargetGetSamplePosition(index)",
+"RenderTargetGetSampleCount()",
+"AtomicBinOp(handle,atomicOp,offset0,offset1,offset2,newValue)",
+"AtomicCompareExchange(handle,offset0,offset1,offset2,compareValue,newValue)",
+"Barrier(barrierMode)",
+"CalculateLOD(handle,sampler,coord0,coord1,coord2,clamped)",
+"Discard(condition)",
+"DerivCoarseX(value)",
+"DerivCoarseY(value)",
+"DerivFineX(value)",
+"DerivFineY(value)",
+"EvalSnapped(inputSigId,inputRowIndex,inputColIndex,offsetX,offsetY)",
+"EvalSampleIndex(inputSigId,inputRowIndex,inputColIndex,sampleIndex)",
+"EvalCentroid(inputSigId,inputRowIndex,inputColIndex)",
+"SampleIndex()",
+"Coverage()",
+"InnerCoverage()",
+"ThreadId(component)",
+"GroupId(component)",
+"ThreadIdInGroup(component)",
+"FlattenedThreadIdInGroup()",
+"EmitStream(streamId)",
+"CutStream(streamId)",
+"EmitThenCutStream(streamId)",
+"GSInstanceID()",
+"MakeDouble(lo,hi)",
+"SplitDouble(value)",
+"LoadOutputControlPoint(inputSigId,row,col,index)",
+"LoadPatchConstant(inputSigId,row,col)",
+"DomainLocation(component)",
+"StorePatchConstant(outputSigID,row,col,value)",
+"OutputControlPointID()",
+"PrimitiveID()",
+"CycleCounterLegacy()",
+"WaveIsFirstLane()",
+"WaveGetLaneIndex()",
+"WaveGetLaneCount()",
+"WaveAnyTrue(cond)",
+"WaveAllTrue(cond)",
+"WaveActiveAllEqual(value)",
+"WaveActiveBallot(cond)",
+"WaveReadLaneAt(value,lane)",
+"WaveReadLaneFirst(value)",
+"WaveActiveOp(value,op,sop)",
+"WaveActiveBit(value,op)",
+"WavePrefixOp(value,op,sop)",
+"QuadReadLaneAt(value,quadLane)",
+"QuadOp(value,op)",
+"BitcastI16toF16(value)",
+"BitcastF16toI16(value)",
+"BitcastI32toF32(value)",
+"BitcastF32toI32(value)",
+"BitcastI64toF64(value)",
+"BitcastF64toI64(value)",
+"LegacyF32ToF16(value)",
+"LegacyF16ToF32(value)",
+"LegacyDoubleToFloat(value)",
+"LegacyDoubleToSInt32(value)",
+"LegacyDoubleToUInt32(value)",
+"WaveAllBitCount(value)",
+"WavePrefixBitCount(value)",
+"AttributeAtVertex(inputSigId,inputRowIndex,inputColIndex,VertexID)",
+"ViewID()",
+"RawBufferLoad(srv,index,elementOffset,mask,alignment)",
+"RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)",
+"InstanceID()",
+"InstanceIndex()",
+"HitKind()",
+"RayFlags()",
+"DispatchRaysIndex(col)",
+"DispatchRaysDimensions(col)",
+"WorldRayOrigin(col)",
+"WorldRayDirection(col)",
+"ObjectRayOrigin(col)",
+"ObjectRayDirection(col)",
+"ObjectToWorld(row,col)",
+"WorldToObject(row,col)",
+"RayTMin()",
+"RayTCurrent()",
+"IgnoreHit()",
+"AcceptHitAndEndSearch()",
+"TraceRay(AccelerationStructure,RayFlags,InstanceInclusionMask,RayContributionToHitGroupIndex,MultiplierForGeometryContributionToShaderIndex,MissShaderIndex,Origin_X,Origin_Y,Origin_Z,TMin,Direction_X,Direction_Y,Direction_Z,TMax,payload)",
+"ReportHit(THit,HitKind,Attributes)",
+"CallShader(ShaderIndex,Parameter)",
+"CreateHandleForLib(Resource)",
+"PrimitiveIndex()",
+"Dot2AddHalf(acc,ax,ay,bx,by)",
+"Dot4AddI8Packed(acc,a,b)",
+"Dot4AddU8Packed(acc,a,b)",
+"WaveMatch(value)",
+"WaveMultiPrefixOp(value,mask0,mask1,mask2,mask3,op,sop)",
+"WaveMultiPrefixBitCount(value,mask0,mask1,mask2,mask3)",
+"SetMeshOutputCounts(numVertices,numPrimitives)",
+"EmitIndices(PrimitiveIndex,VertexIndex0,VertexIndex1,VertexIndex2)",
+"GetMeshPayload()",
+"StoreVertexOutput(outputSigId,rowIndex,colIndex,value,vertexIndex)",
+"StorePrimitiveOutput(outputSigId,rowIndex,colIndex,value,primitiveIndex)",
+"DispatchMesh(threadGroupCountX,threadGroupCountY,threadGroupCountZ,payload)",
+"WriteSamplerFeedback(feedbackTex,sampledTex,sampler,c0,c1,c2,c3,clamp)",
+"WriteSamplerFeedbackBias(feedbackTex,sampledTex,sampler,c0,c1,c2,c3,bias,clamp)",
+"WriteSamplerFeedbackLevel(feedbackTex,sampledTex,sampler,c0,c1,c2,c3,lod)",
+"WriteSamplerFeedbackGrad(feedbackTex,sampledTex,sampler,c0,c1,c2,c3,ddx0,ddx1,ddx2,ddy0,ddy1,ddy2,clamp)",
+"AllocateRayQuery(constRayFlags)",
+"RayQuery_TraceRayInline(rayQueryHandle,accelerationStructure,rayFlags,instanceInclusionMask,origin_X,origin_Y,origin_Z,tMin,direction_X,direction_Y,direction_Z,tMax)",
+"RayQuery_Proceed(rayQueryHandle)",
+"RayQuery_Abort(rayQueryHandle)",
+"RayQuery_CommitNonOpaqueTriangleHit(rayQueryHandle)",
+"RayQuery_CommitProceduralPrimitiveHit(rayQueryHandle,t)",
+"RayQuery_CommittedStatus(rayQueryHandle)",
+"RayQuery_CandidateType(rayQueryHandle)",
+"RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)",
+"RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)",
+"RayQuery_CommittedObjectToWorld3x4(rayQueryHandle,row,col)",
+"RayQuery_CommittedWorldToObject3x4(rayQueryHandle,row,col)",
+"RayQuery_CandidateProceduralPrimitiveNonOpaque(rayQueryHandle)",
+"RayQuery_CandidateTriangleFrontFace(rayQueryHandle)",
+"RayQuery_CommittedTriangleFrontFace(rayQueryHandle)",
+"RayQuery_CandidateTriangleBarycentrics(rayQueryHandle,component)",
+"RayQuery_CommittedTriangleBarycentrics(rayQueryHandle,component)",
+"RayQuery_RayFlags(rayQueryHandle)",
+"RayQuery_WorldRayOrigin(rayQueryHandle,component)",
+"RayQuery_WorldRayDirection(rayQueryHandle,component)",
+"RayQuery_RayTMin(rayQueryHandle)",
+"RayQuery_CandidateTriangleRayT(rayQueryHandle)",
+"RayQuery_CommittedRayT(rayQueryHandle)",
+"RayQuery_CandidateInstanceIndex(rayQueryHandle)",
+"RayQuery_CandidateInstanceID(rayQueryHandle)",
+"RayQuery_CandidateGeometryIndex(rayQueryHandle)",
+"RayQuery_CandidatePrimitiveIndex(rayQueryHandle)",
+"RayQuery_CandidateObjectRayOrigin(rayQueryHandle,component)",
+"RayQuery_CandidateObjectRayDirection(rayQueryHandle,component)",
+"RayQuery_CommittedInstanceIndex(rayQueryHandle)",
+"RayQuery_CommittedInstanceID(rayQueryHandle)",
+"RayQuery_CommittedGeometryIndex(rayQueryHandle)",
+"RayQuery_CommittedPrimitiveIndex(rayQueryHandle)",
+"RayQuery_CommittedObjectRayOrigin(rayQueryHandle,component)",
+"RayQuery_CommittedObjectRayDirection(rayQueryHandle,component)",
+"GeometryIndex()",
+"RayQuery_CandidateInstanceContributionToHitGroupIndex(rayQueryHandle)",
+"RayQuery_CommittedInstanceContributionToHitGroupIndex(rayQueryHandle)",
+"AnnotateHandle(res,props)",
+"CreateHandleFromBinding(bind,index,nonUniformIndex)",
+"CreateHandleFromHeap(index,samplerHeap,nonUniformIndex)",
+"Unpack4x8(unpackMode,pk)",
+"Pack4x8(packMode,x,y,z,w)",
+"IsHelperLane()",
+"QuadVote(cond,op)",
+"TextureGatherRaw(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1)",
+"SampleCmpLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue,lod)",
+"TextureStoreSample(srv,coord0,coord1,coord2,value0,value1,value2,value3,mask,sampleIdx)",
+"WaveMatrix_Annotate(waveMatrixPtr,waveMatProps)",
+"WaveMatrix_Depth(waveMatProps)",
+"WaveMatrix_Fill(waveMatrixPtr,value)",
+"WaveMatrix_LoadRawBuf(waveMatrixPtr,rawBuf,offsetInBytes,strideInBytes,alignmentInBytes,colMajor)",
+"WaveMatrix_LoadGroupShared(waveMatrixPtr,groupsharedPtr,startArrayIndex,strideInElements,colMajor)",
+"WaveMatrix_StoreRawBuf(waveMatrixPtr,rawBuf,offsetInBytes,strideInBytes,alignmentInBytes,colMajor)",
+"WaveMatrix_StoreGroupShared(waveMatrixPtr,groupsharedPtr,startArrayIndex,strideInElements,colMajor)",
+"WaveMatrix_Multiply(waveMatrixAccumulator,waveMatrixLeft,waveMatrixRight)",
+"WaveMatrix_MultiplyAccumulate(waveMatrixAccumulator,waveMatrixLeft,waveMatrixRight)",
+"WaveMatrix_ScalarOp(waveMatrixPtr,op,value)",
+"WaveMatrix_SumAccumulate(waveMatrixFragment,waveMatrixInput)",
+"WaveMatrix_Add(waveMatrixAccumulator,waveMatrixAccumulatorOrFragment)",
+"AllocateNodeOutputRecords(output,numRecords,perThread)",
+"GetNodeRecordPtr(recordhandle,arrayIndex)",
+"IncrementOutputCount(output,count,perThread)",
+"OutputComplete(output)",
+"GetInputRecordCount(input)",
+"FinishedCrossGroupSharing(input)",
+"BarrierByMemoryType(MemoryTypeFlags,SemanticFlags)",
+"BarrierByMemoryHandle(object,SemanticFlags)",
+"BarrierByNodeRecordHandle(object,SemanticFlags)",
+"CreateNodeOutputHandle(MetadataIdx)",
+"IndexNodeHandle(NodeOutputHandle,ArrayIndex)",
+"AnnotateNodeHandle(node,props)",
+"CreateNodeInputRecordHandle(MetadataIdx)",
+"AnnotateNodeRecordHandle(noderecord,props)",
+"NodeOutputIsValid(output)",
+"GetRemainingRecursionLevels()",
+"SampleCmpGrad(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue,ddx0,ddx1,ddx2,ddy0,ddy1,ddy2,clamp)",
+"SampleCmpBias(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue,bias,clamp)",
+"StartVertexLocation()",
+"StartInstanceLocation()",
 };
 
 static const char *funcNameSigs[] = {
@@ -663,7 +904,7 @@ static rdcstr GetResourceShapeName(DXIL::ResourceKind shape, bool uav)
 static rdcstr GetSamplerTypeName(const Type *type)
 {
   // variable should be a pointer to the underlying type
-  RDCASSERT(type->type == Type::Pointer);
+  RDCASSERTEQUAL(type->type, Type::Pointer);
   const Type *resType = type->inner;
 
   // samplers should be entirely opaque, so we return the struct as-is now
@@ -681,7 +922,7 @@ static rdcstr GetSamplerTypeName(const Type *type)
 static rdcstr GetResourceTypeName(const Type *type)
 {
   // variable should be a pointer to the underlying type
-  RDCASSERT(type->type == Type::Pointer);
+  RDCASSERTEQUAL(type->type, Type::Pointer);
   const Type *resType = type->inner;
 
   // arrayed resources we want to remove the outer array-of-bindings here
@@ -735,6 +976,14 @@ rdcstr GetCBufferVariableTypeName(const DXBC::CBufferVariableType &type)
   return ret;
 }
 
+rdcstr Program::GetHandleAlias(const rdcstr &handleStr) const
+{
+  auto it = m_SsaAliases.find(handleStr);
+  if(it != m_SsaAliases.end())
+    return it->second;
+  return handleStr;
+}
+
 void Program::Parse(const DXBC::Reflection *reflection)
 {
   if(m_Parsed)
@@ -744,6 +993,7 @@ void Program::Parse(const DXBC::Reflection *reflection)
 
   m_EntryPointInterfaces.clear();
   FillEntryPointInterfaces();
+  m_SsaAliases.clear();
   ParseReferences(reflection);
 
   m_Parsed = true;
@@ -977,7 +1227,8 @@ const Metadata *Program::FindMetadata(uint32_t slot) const
 rdcstr Program::ArgToString(const Value *v, bool withTypes, const rdcstr &attrString) const
 {
   rdcstr ret;
-
+  const bool dxcStyleFormatting = m_DXCStyle;
+  const char dxilIdentifier = Program::GetDXILIdentifier(dxcStyleFormatting);
   if(const Literal *lit = cast<Literal>(v))
   {
     if(withTypes)
@@ -1000,16 +1251,16 @@ rdcstr Program::ArgToString(const Value *v, bool withTypes, const rdcstr &attrSt
           metaConst->isUndef() || metaConst->isNULL() ||
           metaConst->type->name.beginsWith("class.matrix.")))
       {
-        ret += metaConst->toString(withTypes);
+        ret += metaConst->toString(dxcStyleFormatting, withTypes);
       }
       else if(m.isConstant && metaInst)
       {
-        ret += m.valString();
+        ret += m.valString(dxcStyleFormatting);
       }
       else if(m.isConstant && metaGlobal)
       {
         if(withTypes)
-          ret += metaGlobal->type->toString() + " ";
+          ret += metaGlobal->type->toString(dxcStyleFormatting) + " ";
         ret += "@" + escapeStringIfNeeded(metaGlobal->name);
       }
       else
@@ -1026,45 +1277,43 @@ rdcstr Program::ArgToString(const Value *v, bool withTypes, const rdcstr &attrSt
   else if(const GlobalVar *global = cast<GlobalVar>(v))
   {
     if(withTypes)
-      ret = global->type->toString() + " ";
+      ret = global->type->toString(dxcStyleFormatting) + " ";
     ret += attrString;
     ret += "@" + escapeStringIfNeeded(global->name);
   }
   else if(const Constant *c = cast<Constant>(v))
   {
     ret += attrString;
-    ret = c->toString(withTypes);
+    ret = c->toString(dxcStyleFormatting, withTypes);
   }
   else if(const Instruction *inst = cast<Instruction>(v))
   {
     if(withTypes)
-      ret = inst->type->toString() + " ";
+      ret = inst->type->toString(dxcStyleFormatting) + " ";
     ret += attrString;
     if(inst->getName().empty())
-      ret += StringFormat::Fmt("%c%u", DXIL::dxilIdentifier, inst->slot);
+      ret += StringFormat::Fmt("%c%u", dxilIdentifier, inst->slot);
     else
-      ret += StringFormat::Fmt("%c%s", DXIL::dxilIdentifier,
-                               escapeStringIfNeeded(inst->getName()).c_str());
+      ret += StringFormat::Fmt("%c%s", dxilIdentifier, escapeStringIfNeeded(inst->getName()).c_str());
   }
   else if(const Block *block = cast<Block>(v))
   {
     if(withTypes)
       ret = "label ";
     ret += attrString;
-    if(DXIL::dxcStyleFormatting)
+    if(dxcStyleFormatting)
     {
       if(block->name.empty())
-        ret += StringFormat::Fmt("%c%u", DXIL::dxilIdentifier, block->slot);
+        ret += StringFormat::Fmt("%c%u", dxilIdentifier, block->slot);
       else
-        ret += StringFormat::Fmt("%c%s", DXIL::dxilIdentifier,
-                                 escapeStringIfNeeded(block->name).c_str());
+        ret += StringFormat::Fmt("%c%s", dxilIdentifier, escapeStringIfNeeded(block->name).c_str());
     }
     else
     {
       if(block->name.empty())
-        ret += StringFormat::Fmt("%clabel%u", DXIL::dxilIdentifier, block->slot);
+        ret += StringFormat::Fmt("%clabel%u", dxilIdentifier, block->slot);
       else
-        ret += StringFormat::Fmt("%clabel_%s%u", DXIL::dxilIdentifier,
+        ret += StringFormat::Fmt("%clabel_%s%u", dxilIdentifier,
                                  DXBC::BasicDemangle(block->name).c_str(), block->id);
     }
   }
@@ -1104,13 +1353,14 @@ rdcstr Program::DisassembleComDats(int &instructionLine) const
 
 rdcstr Program::DisassembleTypes(int &instructionLine) const
 {
+  const bool dxcStyleFormatting = m_DXCStyle;
   rdcstr ret;
   bool printedTypes = false;
   for(const Type *typ : m_Accum.printOrderTypes)
   {
     if(typ->type == Type::Struct && !typ->name.empty())
     {
-      rdcstr name = typ->toString();
+      rdcstr name = typ->toString(dxcStyleFormatting);
       ret += StringFormat::Fmt("%s = type { ", name.c_str());
       bool first = true;
       for(const Type *t : typ->members)
@@ -1118,12 +1368,18 @@ rdcstr Program::DisassembleTypes(int &instructionLine) const
         if(!first)
           ret += ", ";
         first = false;
-        ret += StringFormat::Fmt("%s", t->toString().c_str());
+        ret += StringFormat::Fmt("%s", t->toString(dxcStyleFormatting).c_str());
       }
       if(typ->members.empty())
+      {
+        if(ret.back() == ' ')
+          ret.pop_back();
         ret += "}\n";
+      }
       else
+      {
         ret += " }\n";
+      }
 
       instructionLine++;
       printedTypes = true;
@@ -1139,6 +1395,7 @@ rdcstr Program::DisassembleTypes(int &instructionLine) const
 
 rdcstr Program::DisassembleGlobalVars(int &instructionLine) const
 {
+  const bool dxcStyleFormatting = m_DXCStyle;
   rdcstr ret;
   for(size_t i = 0; i < m_GlobalVars.size(); i++)
   {
@@ -1176,9 +1433,9 @@ rdcstr Program::DisassembleGlobalVars(int &instructionLine) const
       ret += "global ";
 
     if(g.initialiser)
-      ret += g.initialiser->toString(true);
+      ret += g.initialiser->toString(dxcStyleFormatting, true);
     else
-      ret += g.type->inner->toString();
+      ret += g.type->inner->toString(dxcStyleFormatting);
 
     if(g.align > 0)
       ret += StringFormat::Fmt(", align %u", g.align);
@@ -1239,6 +1496,7 @@ rdcstr Program::DisassembleFuncAttrGroups() const
 
 rdcstr Program::DisassembleMeta() const
 {
+  const bool dxcStyleFormatting = m_DXCStyle;
   rdcstr ret;
   size_t numIdx = 0;
   size_t dbgIdx = 0;
@@ -1249,7 +1507,7 @@ rdcstr Program::DisassembleMeta() const
     {
       rdcstr metaline =
           StringFormat::Fmt("!%u = %s%s\n", i, m_MetaSlots[numIdx]->isDistinct ? "distinct " : "",
-                            m_MetaSlots[numIdx]->valString().c_str());
+                            m_MetaSlots[numIdx]->valString(dxcStyleFormatting).c_str());
 #if ENABLED(DXC_COMPATIBLE_DISASM)
       for(size_t c = 0; c < metaline.size(); c += 4096)
         ret += metaline.substr(c, 4096);
@@ -1262,7 +1520,8 @@ rdcstr Program::DisassembleMeta() const
     }
     else if(dbgIdx < m_DebugLocations.size() && m_DebugLocations[dbgIdx].slot == i)
     {
-      ret += StringFormat::Fmt("!%u = %s\n", i, m_DebugLocations[dbgIdx].toString().c_str());
+      ret += StringFormat::Fmt("!%u = %s\n", i,
+                               m_DebugLocations[dbgIdx].toString(dxcStyleFormatting).c_str());
       dbgIdx++;
     }
     else
@@ -1289,17 +1548,6 @@ const rdcstr &Program::GetDisassembly(bool dxcStyle, const DXBC::Reflection *ref
   if(m_Disassembly.empty() || (dxcStyle != m_DXCStyle))
   {
     m_DXCStyle = dxcStyle;
-    // Need to set the style formatting before Parse() to get consistent SSA identifiers
-    if(m_DXCStyle)
-    {
-      DXIL::dxcStyleFormatting = true;
-      DXIL::dxilIdentifier = '%';
-    }
-    else
-    {
-      DXIL::dxcStyleFormatting = false;
-      DXIL::dxilIdentifier = '_';
-    }
 
     Parse(reflection);
 
@@ -1313,6 +1561,9 @@ const rdcstr &Program::GetDisassembly(bool dxcStyle, const DXBC::Reflection *ref
 
 void Program::MakeDXCDisassemblyString()
 {
+  const bool dxcStyleFormatting = true;
+  const char dxilIdentifier = Program::GetDXILIdentifier(dxcStyleFormatting);
+
   m_Disassembly.clear();
 #if DISABLED(DXC_COMPATIBLE_DISASM)
   m_Disassembly += StringFormat::Fmt("; %s Shader, compiled under SM%u.%u\n\n",
@@ -1346,8 +1597,8 @@ void Program::MakeDXCDisassemblyString()
     m_Disassembly += (func.external ? "declare " : "define ");
     if(func.internalLinkage)
       m_Disassembly += "internal ";
-    m_Disassembly +=
-        func.type->declFunction("@" + escapeStringIfNeeded(func.name), func.args, func.attrs);
+    m_Disassembly += func.type->declFunction("@" + escapeStringIfNeeded(func.name), func.args,
+                                             func.attrs, dxcStyleFormatting);
 
     if(func.comdatIdx < m_Comdats.size())
       m_Disassembly += StringFormat::Fmt(
@@ -1381,10 +1632,10 @@ void Program::MakeDXCDisassemblyString()
         inst.disassemblyLine = m_DisassemblyInstructionLine;
         m_Disassembly += "  ";
         if(!inst.getName().empty())
-          m_Disassembly += StringFormat::Fmt("%c%s = ", DXIL::dxilIdentifier,
+          m_Disassembly += StringFormat::Fmt("%c%s = ", dxilIdentifier,
                                              escapeStringIfNeeded(inst.getName()).c_str());
         else if(inst.slot != ~0U)
-          m_Disassembly += StringFormat::Fmt("%c%u = ", DXIL::dxilIdentifier, inst.slot);
+          m_Disassembly += StringFormat::Fmt("%c%u = ", dxilIdentifier, inst.slot);
 
         bool debugCall = false;
 
@@ -1394,7 +1645,7 @@ void Program::MakeDXCDisassemblyString()
           case Operation::Call:
           {
             rdcstr funcCallName = inst.getFuncCall()->name;
-            m_Disassembly += "call " + inst.type->toString();
+            m_Disassembly += "call " + inst.type->toString(dxcStyleFormatting);
             m_Disassembly += " @" + escapeStringIfNeeded(funcCallName);
             m_Disassembly += "(";
             bool first = true;
@@ -1462,7 +1713,7 @@ void Program::MakeDXCDisassemblyString()
 
             m_Disassembly += ArgToString(inst.args[0], true);
             m_Disassembly += " to ";
-            m_Disassembly += inst.type->toString();
+            m_Disassembly += inst.type->toString(dxcStyleFormatting);
             break;
           }
           case Operation::ExtractVal:
@@ -1543,7 +1794,7 @@ void Program::MakeDXCDisassemblyString()
           case Operation::Ret:
           {
             if(inst.args.empty())
-              m_Disassembly += "ret " + inst.type->toString();
+              m_Disassembly += "ret " + inst.type->toString(dxcStyleFormatting);
             else
               m_Disassembly += "ret " + ArgToString(inst.args[0], true);
             break;
@@ -1552,7 +1803,7 @@ void Program::MakeDXCDisassemblyString()
           case Operation::Alloca:
           {
             m_Disassembly += "alloca ";
-            m_Disassembly += inst.type->inner->toString();
+            m_Disassembly += inst.type->inner->toString(dxcStyleFormatting);
             if(inst.align > 0)
               m_Disassembly += StringFormat::Fmt(", align %u", (1U << inst.align) >> 1);
             break;
@@ -1562,7 +1813,7 @@ void Program::MakeDXCDisassemblyString()
             m_Disassembly += "getelementptr ";
             if(inst.opFlags() & InstructionFlags::InBounds)
               m_Disassembly += "inbounds ";
-            m_Disassembly += inst.args[0]->type->inner->toString();
+            m_Disassembly += inst.args[0]->type->inner->toString(dxcStyleFormatting);
             m_Disassembly += ", ";
             bool first = true;
             for(const Value *s : inst.args)
@@ -1580,7 +1831,7 @@ void Program::MakeDXCDisassemblyString()
             m_Disassembly += "load ";
             if(inst.opFlags() & InstructionFlags::Volatile)
               m_Disassembly += "volatile ";
-            m_Disassembly += inst.type->toString();
+            m_Disassembly += inst.type->toString(dxcStyleFormatting);
             m_Disassembly += ", ";
             bool first = true;
             for(const Value *s : inst.args)
@@ -1761,7 +2012,7 @@ void Program::MakeDXCDisassemblyString()
           case Operation::Phi:
           {
             m_Disassembly += "phi ";
-            m_Disassembly += inst.type->toString();
+            m_Disassembly += inst.type->toString(dxcStyleFormatting);
             for(size_t a = 0; a < inst.args.size(); a += 2)
             {
               if(a == 0)
@@ -1816,7 +2067,7 @@ void Program::MakeDXCDisassemblyString()
             m_Disassembly += "load atomic ";
             if(inst.opFlags() & InstructionFlags::Volatile)
               m_Disassembly += "volatile ";
-            m_Disassembly += inst.type->toString();
+            m_Disassembly += inst.type->toString(dxcStyleFormatting);
             m_Disassembly += ", ";
             bool first = true;
             for(const Value *s : inst.args)
@@ -1998,7 +2249,7 @@ void Program::MakeDXCDisassemblyString()
             RDCASSERT(expr);
             m_Disassembly +=
                 StringFormat::Fmt(" ; var:%s ", escapeString(GetDebugVarName(var->dwarf)).c_str());
-            m_Disassembly += expr->valString();
+            m_Disassembly += expr->valString(dxcStyleFormatting);
 
             rdcstr funcName = GetFunctionScopeName(var->dwarf);
             if(!funcName.empty())
@@ -2011,10 +2262,10 @@ void Program::MakeDXCDisassemblyString()
           if(Constant *op = cast<Constant>(inst.args[0]))
           {
             uint32_t opcode = op->getU32();
-            if(opcode < ARRAY_COUNT(funcNameSigs))
+            if(opcode < ARRAY_COUNT(dxcOpNames))
             {
               m_Disassembly += "  ; ";
-              m_Disassembly += funcNameSigs[opcode];
+              m_Disassembly += dxcOpNames[opcode];
             }
           }
         }
@@ -2206,9 +2457,9 @@ void Program::MakeDXCDisassemblyString()
               labelName += ", ";
             first = false;
             if(pred->name.empty())
-              labelName += StringFormat::Fmt("%c%u", DXIL::dxilIdentifier, pred->slot);
+              labelName += StringFormat::Fmt("%c%u", dxilIdentifier, pred->slot);
             else
-              labelName += StringFormat::Fmt("%c%s", DXIL::dxilIdentifier,
+              labelName += StringFormat::Fmt("%c%s", dxilIdentifier,
                                              escapeStringIfNeeded(pred->name).c_str());
           }
 #endif
@@ -2245,9 +2496,8 @@ static const DXBC::CBufferVariable *FindCBufferVar(const uint32_t minOffset, con
     // absolute byte offset of this variable in the cbuffer
     const uint32_t voffs = byteOffset + v.offset;
 
-    // does minOffset-maxOffset reside in this variable? We don't handle the case where the range
-    // crosses a variable (and I don't think FXC emits that anyway).
-    if(voffs <= minOffset && voffs + v.type.bytesize > maxOffset)
+    // Does does minOffset-maxOffset fit within this variable?
+    if(voffs <= minOffset && voffs + v.type.bytesize >= maxOffset)
     {
       byteOffset = voffs;
 
@@ -2266,7 +2516,8 @@ static const DXBC::CBufferVariable *FindCBufferVar(const uint32_t minOffset, con
   return NULL;
 }
 
-static rdcstr MakeCBufferRegisterStr(uint32_t reg, DXIL::EntryPointInterface::CBuffer cbuffer)
+static rdcstr MakeCBufferRegisterStr(uint32_t reg, uint32_t bytesPerElement,
+                                     DXIL::EntryPointInterface::CBuffer cbuffer)
 {
   rdcstr ret = "{";
   uint32_t offset = 0;
@@ -2278,7 +2529,7 @@ static rdcstr MakeCBufferRegisterStr(uint32_t reg, DXIL::EntryPointInterface::CB
 
     uint32_t baseOffset = 0;
     uint32_t minOffset = regOffset + offset;
-    uint32_t maxOffset = minOffset + 1;
+    uint32_t maxOffset = minOffset + bytesPerElement;
     rdcstr prefix;
     const DXBC::CBufferVariable *var =
         FindCBufferVar(minOffset, maxOffset, cbuffer.cbufferRefl->variables, baseOffset, prefix);
@@ -2310,6 +2561,28 @@ static rdcstr MakeCBufferRegisterStr(uint32_t reg, DXIL::EntryPointInterface::CB
       {
         ret += StringFormat::Fmt("[%u]", varOffset / 16);
       }
+      // or if it's a vector
+      if((var->type.varClass == DXBC::CLASS_VECTOR && var->type.cols > 1) ||
+         (var->type.varClass == DXBC::CLASS_SCALAR && var->type.cols > 1))
+      {
+        offset = var->offset;
+        offset -= regOffset;
+
+        uint32_t byteSize = var->type.bytesize;
+        const uint32_t elementSize = byteSize / var->type.cols;
+        const char *swizzle = "xyzw";
+        ret += ".x";
+        offset += elementSize;
+        for(uint32_t c = 1; c < var->type.cols; ++c)
+        {
+          if(offset > 16)
+            break;
+          ret += ", ";
+          ret += cbuffer.name + "." + prefix + var->name;
+          ret += StringFormat::Fmt(".%c", swizzle[c & 0x3]);
+          offset += elementSize;
+        }
+      }
 
       offset = var->offset + var->type.bytesize;
       offset -= regOffset;
@@ -2317,17 +2590,56 @@ static rdcstr MakeCBufferRegisterStr(uint32_t reg, DXIL::EntryPointInterface::CB
     else
     {
       ret += "<padding>";
-      offset += 4;
+      offset += bytesPerElement;
     }
   }
   ret += "}";
   return ret;
 }
 
+rdcstr ProcessNormCompType(ComponentType &compType)
+{
+  if(compType == ComponentType::SNormF16)
+  {
+    compType = ComponentType::F16;
+    return "snorm ";
+  }
+  else if(compType == ComponentType::SNormF32)
+  {
+    compType = ComponentType::F32;
+    return "snorm ";
+  }
+  else if(compType == ComponentType::SNormF64)
+  {
+    compType = ComponentType::F64;
+    return "snorm ";
+  }
+  else if(compType == ComponentType::UNormF16)
+  {
+    compType = ComponentType::F16;
+    return "unorm ";
+  }
+  else if(compType == ComponentType::UNormF32)
+  {
+    compType = ComponentType::F32;
+    return "unorm ";
+  }
+  else if(compType == ComponentType::UNormF64)
+  {
+    compType = ComponentType::F64;
+    return "unorm ";
+  }
+
+  return rdcstr();
+}
+
 void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
 {
+  const bool dxcStyleFormatting = m_DXCStyle;
+  const char dxilIdentifier = Program::GetDXILIdentifier(dxcStyleFormatting);
+
   m_Disassembly.clear();
-  m_DisassemblyInstructionLine = 4;
+  m_DisassemblyInstructionLine = 1;
 
   m_Disassembly += StringFormat::Fmt("; %s Shader, compiled under SM%u.%u",
                                      shaderNames[int(m_Type)], m_Major, m_Minor);
@@ -2374,14 +2686,20 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             if(needBlankLine)
               DisassemblyAddNewLine();
             EntryPointInterface::Signature &sig = entryPoint->inputs[j];
-            VarType varType = VarTypeForComponentType(sig.type);
+
             m_Disassembly += "  ";
+
+            ComponentType compType = sig.type;
+
+            m_Disassembly += ProcessNormCompType(compType);
+
+            VarType varType = VarTypeForComponentType(compType);
             m_Disassembly += ToStr(varType).c_str();
 
             if(sig.cols > 1)
               m_Disassembly += ToStr(sig.cols);
 
-            if(reflection && sig.rows == 1)
+            if(reflection && sig.rows == 1 && j < reflection->InputSig.size())
             {
               const SigParameter &sigParam = reflection->InputSig[j];
               if(sigParam.semanticName == sig.name)
@@ -2413,14 +2731,20 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             if(needBlankLine)
               DisassemblyAddNewLine();
             EntryPointInterface::Signature &sig = entryPoint->outputs[j];
-            VarType varType = VarTypeForComponentType(sig.type);
+
             m_Disassembly += "  ";
+
+            ComponentType compType = sig.type;
+
+            m_Disassembly += ProcessNormCompType(compType);
+
+            VarType varType = VarTypeForComponentType(compType);
             m_Disassembly += ToStr(varType).c_str();
 
             if(sig.cols > 1)
               m_Disassembly += ToStr(sig.cols);
 
-            if(reflection && sig.rows == 1)
+            if(reflection && sig.rows == 1 && j < reflection->OutputSig.size())
             {
               const SigParameter &sigParam = reflection->OutputSig[j];
               if(sigParam.semanticName == sig.name)
@@ -2490,8 +2814,6 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
         {
           for(size_t j = 0; j < entryPoint->cbuffers.size(); ++j)
           {
-            if(needBlankLine)
-              DisassemblyAddNewLine();
             EntryPointInterface::CBuffer &cbuffer = entryPoint->cbuffers[j];
             if(reflection)
             {
@@ -2506,6 +2828,8 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 }
               }
             }
+            if(needBlankLine)
+              DisassemblyAddNewLine();
             m_Disassembly += "cbuffer " + cbuffer.name;
             if(cbuffer.regCount > 1)
             {
@@ -2516,7 +2840,8 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             }
             m_Disassembly +=
                 " : register(b" + ToStr(cbuffer.regBase) + ", space" + ToStr(cbuffer.space) + ")";
-            if(cbuffer.cbufferRefl)
+            // Ignore cbuffer's which don't have reflection data
+            if(cbuffer.cbufferRefl && cbuffer.cbufferRefl->hasReflectionData)
             {
               if(!cbuffer.cbufferRefl->variables.empty())
               {
@@ -2537,10 +2862,15 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 }
                 m_Disassembly += "};";
                 DisassemblyAddNewLine();
+                needBlankLine = true;
               }
             }
-            needBlankLine = true;
+            else
+            {
+              DisassemblyAddNewLine();
+            }
           }
+          needBlankLine = true;
         }
 
         if(!entryPoint->samplers.empty())
@@ -2573,8 +2903,8 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
 
       if(func.internalLinkage)
         m_Disassembly += "internal ";
-      m_Disassembly +=
-          func.type->declFunction("@" + escapeStringIfNeeded(func.name), func.args, func.attrs);
+      m_Disassembly += func.type->declFunction("@" + escapeStringIfNeeded(func.name), func.args,
+                                               func.attrs, dxcStyleFormatting);
 
       if(func.comdatIdx < m_Comdats.size())
         m_Disassembly += StringFormat::Fmt(
@@ -2591,8 +2921,6 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
       m_Disassembly += "{";
       DisassemblyAddNewLine();
 
-      std::map<rdcstr, rdcstr> ssaAliases;
-
       size_t curBlock = 0;
 
       // if the first block has a name, use it
@@ -2608,54 +2936,45 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
         Instruction &inst = *func.instructions[funcIdx];
 
         inst.disassemblyLine = m_DisassemblyInstructionLine;
-        rdcstr lineStr;
+        rdcstr resultTypeStr;
         if(!inst.type->isVoid())
         {
-          lineStr += inst.type->toString();
-          lineStr += " ";
+          resultTypeStr += inst.type->toString(dxcStyleFormatting);
+          resultTypeStr += " ";
         }
         rdcstr resultIdStr;
-        if(!inst.getName().empty())
-          resultIdStr = StringFormat::Fmt("%c%s", DXIL::dxilIdentifier,
-                                          escapeStringIfNeeded(inst.getName()).c_str());
-        else if(inst.slot != ~0U)
-          resultIdStr = StringFormat::Fmt("%c%s", DXIL::dxilIdentifier, ToStr(inst.slot).c_str());
-
-        if(!resultIdStr.empty())
-          lineStr += resultIdStr + " = ";
+        MakeResultId(inst, resultIdStr);
 
         bool showDxFuncName = false;
         rdcstr commentStr;
 
+        rdcstr lineStr;
         switch(inst.op)
         {
           case Operation::NoOp: lineStr += "??? "; break;
           case Operation::Call:
           {
             rdcstr funcCallName = inst.getFuncCall()->name;
-            showDxFuncName = funcCallName.beginsWith("dx.op.");
             DXOp dxOpCode = DXOp::NumOpCodes;
-            if(showDxFuncName)
+            if(funcCallName.beginsWith("dx.op."))
             {
               RDCASSERT(getival<DXOp>(inst.args[0], dxOpCode));
               // Have to use beginsWith to include the function names which a type suffix ie. ".f32"
               RDCASSERT(funcCallName.beginsWith(dxOpFunctionNames[(uint32_t)dxOpCode]));
             }
 
-            if(dxOpCode != DXOp::NumOpCodes)
+            switch(dxOpCode)
             {
-              if(dxOpCode == DXOp::LoadInput)
+              case DXOp::LoadInput:
               {
                 // LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
-                showDxFuncName = false;
-
                 rdcstr name;
                 rdcstr rowStr;
                 rdcstr componentStr;
                 uint32_t inputIdx;
                 uint32_t rowIdx;
                 bool hasRowIdx = getival<uint32_t>(inst.args[2], rowIdx);
-                if(getival<uint32_t>(inst.args[1], inputIdx))
+                if(entryPoint && getival<uint32_t>(inst.args[1], inputIdx))
                 {
                   EntryPointInterface::Signature &sig = entryPoint->inputs[inputIdx];
                   name = sig.name;
@@ -2667,34 +2986,33 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 }
                 else
                 {
-                  name = ArgToString(inst.args[1], false);
+                  name = GetArgId(inst, 1);
                   rowStr = "[";
                   if(hasRowIdx)
                     rowStr += ToStr(rowIdx);
                   else
-                    rowStr += ArgToString(inst.args[2], false);
+                    rowStr += GetArgId(inst, 2);
                   rowStr += +"]";
                 }
                 uint32_t componentIdx;
                 if(getival<uint32_t>(inst.args[3], componentIdx))
                   componentStr = StringFormat::Fmt("%c", swizzle[componentIdx & 0x3]);
                 else
-                  componentStr = ArgToString(inst.args[3], false);
+                  componentStr = GetArgId(inst, 3);
 
                 lineStr += "<IN>." + name + rowStr + "." + componentStr;
+                break;
               }
-              else if(dxOpCode == DXOp::StoreOutput)
+              case DXOp::StoreOutput:
               {
                 // StoreOutput(outputSigId,rowIndex,colIndex,value)
-                showDxFuncName = false;
-
                 rdcstr name;
                 rdcstr rowStr;
                 rdcstr componentStr;
                 uint32_t outputIdx;
                 uint32_t rowIdx;
                 bool hasRowIdx = getival<uint32_t>(inst.args[2], rowIdx);
-                if(getival<uint32_t>(inst.args[1], outputIdx))
+                if(entryPoint && getival<uint32_t>(inst.args[1], outputIdx))
                 {
                   EntryPointInterface::Signature &sig = entryPoint->outputs[outputIdx];
                   name = sig.name;
@@ -2706,75 +3024,262 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 }
                 else
                 {
-                  name = ArgToString(inst.args[1], false);
+                  name = GetArgId(inst, 1);
                   rowStr = "[";
                   if(hasRowIdx)
                     rowStr += ToStr(rowIdx);
                   else
-                    rowStr += ArgToString(inst.args[2], false);
+                    rowStr += GetArgId(inst, 2);
                   rowStr += +"]";
                 }
                 uint32_t componentIdx;
                 if(getival<uint32_t>(inst.args[3], componentIdx))
                   componentStr = StringFormat::Fmt("%c", swizzle[componentIdx & 0x3]);
                 else
-                  componentStr = ArgToString(inst.args[3], false);
+                  componentStr = GetArgId(inst, 3);
 
                 lineStr += "<OUT>." + name + rowStr + "." + componentStr;
-                lineStr += " = " + ArgToString(inst.args[4], false);
+                lineStr += " = " + GetArgId(inst, 4);
+                break;
               }
-              else if(dxOpCode == DXOp::CreateHandle)
+              case DXOp::CreateHandle:
+              case DXOp::CreateHandleFromBinding:
               {
                 // CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+                // CreateHandleFromBinding(bind,index,nonUniformIndex)
                 showDxFuncName = false;
 
-                rdcstr handleStr(resultIdStr);
-                rdcstr resName;
-                const ResourceReference *resRef = GetResourceReference(handleStr);
+                uint32_t resIndexArgId = 3;
+                uint32_t nonUniformIndexArgId = 4;
+                if(dxOpCode == DXOp::CreateHandleFromBinding)
+                {
+                  resIndexArgId = 2;
+                  nonUniformIndexArgId = 3;
+                }
+
+                const ResourceReference *resRef = GetResourceReference(resultIdStr);
                 if(resRef)
                 {
-                  resName = resRef->resourceBase.name;
-
                   uint32_t index = 0;
-                  if(getival<uint32_t>(inst.args[3], index))
+                  if(getival<uint32_t>(inst.args[resIndexArgId], index))
                   {
                     if(index != resRef->resourceIndex)
-                    {
                       commentStr += " index = " + ToStr(index);
-                      if(resRef->resourceBase.regCount > 1)
-                        resName += StringFormat::Fmt("[%u]", index);
-                    }
-                  }
-                  else
-                  {
-                    if(resRef->resourceBase.regCount > 1)
-                      resName += "[" + ArgToString(inst.args[3], false) + "]";
                   }
                 }
                 else
                 {
-                  resName = "ResourceClass:" + ArgToString(inst.args[1], false);
-                  resName += "[" + ArgToString(inst.args[2], false) + "]";
-                  commentStr += " index = " + ArgToString(inst.args[3], false);
+                  commentStr += " index = " + GetArgId(inst, resIndexArgId);
                 }
-                ssaAliases[handleStr] = resName;
                 uint32_t value;
-                if(getival<uint32_t>(inst.args[4], value))
+                if(getival<uint32_t>(inst.args[nonUniformIndexArgId], value))
                 {
                   if(value != 0)
                     commentStr += " nonUniformIndex = true";
                 }
-                lineStr += resName;
+                lineStr += GetHandleAlias(resultIdStr);
+                break;
               }
-              else if((dxOpCode == DXOp::CBufferLoad) || (dxOpCode == DXOp::CBufferLoadLegacy))
+              case DXOp::CreateHandleFromHeap:
+              {
+                // CreateHandleFromHeap(index,samplerHeap,nonUniformIndex)
+                uint32_t samplerHeap;
+                if(getival<uint32_t>(inst.args[2], samplerHeap))
+                {
+                  lineStr += GetHandleAlias(resultIdStr);
+
+                  uint32_t value;
+                  if(getival<uint32_t>(inst.args[3], value))
+                  {
+                    if(value != 0)
+                      commentStr += " nonUniformIndex = true";
+                  }
+                }
+                else
+                {
+                  showDxFuncName = true;
+                }
+                break;
+              }
+              case DXOp::AnnotateHandle:
+              {
+                // AnnotateHandle(res,props)
+                showDxFuncName = false;
+
+                if(const Constant *props = cast<Constant>(inst.args[2]))
+                {
+                  const Constant *packed[2];
+                  if(props && !props->isNULL() && props->getMembers().size() == 2 &&
+                     (packed[0] = cast<Constant>(props->getMembers()[0])) != NULL &&
+                     (packed[1] = cast<Constant>(props->getMembers()[1])) != NULL)
+                  {
+                    uint32_t packedProps[2] = {};
+                    packedProps[0] = packed[0]->getU32();
+                    packedProps[1] = packed[1]->getU32();
+
+                    bool uav = (packedProps[0] & (1 << 12)) != 0;
+                    bool rov = (packedProps[0] & (1 << 13)) != 0;
+                    bool globallyCoherent = (packedProps[0] & (1 << 14)) != 0;
+                    bool sampelCmpOrCounter = (packedProps[0] & (1 << 15)) != 0;
+                    ResourceKind resKind = (ResourceKind)(packedProps[0] & 0xFF);
+                    ResourceClass resClass;
+                    if(sampelCmpOrCounter && resKind == ResourceKind::Sampler)
+                      resKind = ResourceKind::SamplerComparison;
+                    if(resKind == ResourceKind::Sampler || resKind == ResourceKind::SamplerComparison)
+                      resClass = ResourceClass::Sampler;
+                    else if(resKind == ResourceKind::CBuffer)
+                      resClass = ResourceClass::CBuffer;
+                    else if(uav)
+                      resClass = ResourceClass::UAV;
+                    else
+                      resClass = ResourceClass::SRV;
+
+                    rdcstr typeStr;
+
+                    bool srv = (resClass == ResourceClass::SRV);
+
+                    ComponentType compType = ComponentType(packedProps[1] & 0xFF);
+                    uint8_t compCount = (packedProps[1] & 0xFF00) >> 8;
+
+                    uint8_t feedbackType = packedProps[1] & 0xFF;
+
+                    uint32_t structStride = packedProps[1];
+
+                    switch(resKind)
+                    {
+                      case ResourceKind::Unknown: typeStr += "Unknown"; break;
+                      case ResourceKind::Texture1D:
+                      case ResourceKind::Texture2D:
+                      case ResourceKind::Texture2DMS:
+                      case ResourceKind::Texture3D:
+                      case ResourceKind::TextureCube:
+                      case ResourceKind::Texture1DArray:
+                      case ResourceKind::Texture2DArray:
+                      case ResourceKind::Texture2DMSArray:
+                      case ResourceKind::TextureCubeArray:
+                      case ResourceKind::TypedBuffer:
+                        if(globallyCoherent)
+                          typeStr += "globallycoherent ";
+                        if(!srv && rov)
+                          typeStr += "ROV";
+                        else if(!srv)
+                          typeStr += "RW";
+                        switch(resKind)
+                        {
+                          case ResourceKind::Texture1D: typeStr += "Texture1D"; break;
+                          case ResourceKind::Texture2D: typeStr += "Texture2D"; break;
+                          case ResourceKind::Texture2DMS: typeStr += "Texture2DMS"; break;
+                          case ResourceKind::Texture3D: typeStr += "Texture3D"; break;
+                          case ResourceKind::TextureCube: typeStr += "TextureCube"; break;
+                          case ResourceKind::Texture1DArray: typeStr += "Texture1DArray"; break;
+                          case ResourceKind::Texture2DArray: typeStr += "Texture2DArray"; break;
+                          case ResourceKind::Texture2DMSArray: typeStr += "Texture2DMSArray"; break;
+                          case ResourceKind::TextureCubeArray: typeStr += "TextureCubeArray"; break;
+                          case ResourceKind::TypedBuffer: typeStr += "TypedBuffer"; break;
+                          default: break;
+                        }
+                        break;
+                      case ResourceKind::RTAccelerationStructure:
+                        typeStr += "RTAccelerationStructure";
+                        break;
+                      case ResourceKind::FeedbackTexture2D: typeStr += "FeedbackTexture2D"; break;
+                      case ResourceKind::FeedbackTexture2DArray:
+                        typeStr += "FeedbackTexture2DArray";
+                        break;
+                      case ResourceKind::StructuredBuffer:
+                        if(globallyCoherent)
+                          typeStr += "globallycoherent ";
+                        typeStr += srv ? "StructuredBuffer" : "RWStructuredBuffer";
+                        typeStr += StringFormat::Fmt("<stride=%u", structStride);
+                        if(sampelCmpOrCounter)
+                          typeStr += ", counter";
+                        typeStr += ">";
+                        break;
+                      case ResourceKind::StructuredBufferWithCounter:
+                        if(globallyCoherent)
+                          typeStr += "globallycoherent ";
+                        typeStr +=
+                            srv ? "StructuredBufferWithCounter" : "RWStructuredBufferWithCounter";
+                        typeStr += StringFormat::Fmt("<stride=%u>", structStride);
+                        break;
+                      case ResourceKind::RawBuffer:
+                        if(globallyCoherent)
+                          typeStr += "globallycoherent ";
+                        typeStr += srv ? "ByteAddressBuffer" : "RWByteAddressBuffer";
+                        break;
+                      case ResourceKind::CBuffer:
+                        RDCASSERTEQUAL(resClass, ResourceClass::CBuffer);
+                        typeStr += "CBuffer";
+                        break;
+                      case ResourceKind::Sampler:
+                        RDCASSERTEQUAL(resClass, ResourceClass::Sampler);
+                        typeStr += "SamplerState";
+                        break;
+                      case ResourceKind::TBuffer:
+                        RDCASSERTEQUAL(resClass, ResourceClass::SRV);
+                        typeStr += "TBuffer";
+                        break;
+                      case ResourceKind::SamplerComparison:
+                        RDCASSERTEQUAL(resClass, ResourceClass::Sampler);
+                        typeStr += "SamplerComparisonState";
+                        break;
+                    }
+
+                    if(resKind == ResourceKind::FeedbackTexture2D ||
+                       resKind == ResourceKind::FeedbackTexture2DArray)
+                    {
+                      if(feedbackType == 0)
+                        typeStr += "<MinMip>";
+                      else if(feedbackType == 1)
+                        typeStr += "<MipRegionUsed>";
+                      else
+                        typeStr += "<Invalid>";
+                    }
+                    else if(resKind == ResourceKind::Texture1D ||
+                            resKind == ResourceKind::Texture2D || resKind == ResourceKind::Texture3D ||
+                            resKind == ResourceKind::TextureCube ||
+                            resKind == ResourceKind::Texture1DArray ||
+                            resKind == ResourceKind::Texture2DArray ||
+                            resKind == ResourceKind::TextureCubeArray ||
+                            resKind == ResourceKind::TypedBuffer ||
+                            resKind == ResourceKind::Texture2DMS ||
+                            resKind == ResourceKind::Texture2DMSArray)
+                    {
+                      typeStr += "<";
+                      if(compCount > 1)
+                        typeStr += StringFormat::Fmt("%dx", compCount);
+                      typeStr += StringFormat::Fmt("%s>", ToStr(compType).c_str());
+                    }
+                    lineStr += "(";
+                    lineStr += typeStr;
+                    lineStr += ")";
+                    rdcstr ssaStr = GetArgId(inst, 1);
+                    if(m_SsaAliases.count(ssaStr) == 0)
+                      lineStr += ssaStr;
+                    else
+                      lineStr += m_SsaAliases[ssaStr];
+
+                    resultIdStr = GetHandleAlias(resultIdStr);
+                  }
+                  else
+                  {
+                    showDxFuncName = true;
+                  }
+                }
+                else
+                {
+                  showDxFuncName = true;
+                }
+                break;
+              }
+              case DXOp::CBufferLoad:
+              case DXOp::CBufferLoadLegacy:
               {
                 // CBufferLoad(handle,byteOffset,alignment)
                 // CBufferLoadLegacy(handle,regIndex)
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
+                rdcstr handleStr = GetArgId(inst, 1);
                 const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef)
+                if(entryPoint && resRef)
                 {
                   uint32_t regIndex;
                   if(getival<uint32_t>(inst.args[2], regIndex))
@@ -2786,106 +3291,139 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                       regIndex = regIndex / 16;
                       // uint32_t alignment = getival<uint32_t>(inst.args[3]);
                     }
-                    lineStr += MakeCBufferRegisterStr(regIndex,
-                                                      entryPoint->cbuffers[resRef->resourceIndex]);
+                    const EntryPointInterface::CBuffer &cbuffer =
+                        entryPoint->cbuffers[resRef->resourceIndex];
+                    if(cbuffer.cbufferRefl && cbuffer.cbufferRefl->hasReflectionData)
+                    {
+                      const Type *retType = inst.type;
+                      uint32_t bytesPerElement = 4;
+                      if(retType)
+                      {
+                        RDCASSERTEQUAL(retType->type, Type::TypeKind::Struct);
+                        const Type *baseType = retType->members[0];
+                        RDCASSERTEQUAL(baseType->type, Type::TypeKind::Scalar);
+                        bytesPerElement = baseType->bitWidth / 8;
+                      }
+                      lineStr += MakeCBufferRegisterStr(regIndex, bytesPerElement, cbuffer);
+                      commentStr += " cbuffer = " + cbuffer.name;
+                      commentStr += ", byte_offset = " + ToStr(regIndex * 16);
+                    }
+                    else
+                    {
+                      lineStr += cbuffer.name;
+                      lineStr += ".Load4(";
+                      lineStr += "byte_offset = " + ToStr(regIndex * 16);
+                      lineStr += ")";
+                    }
                   }
                 }
                 else
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if(dxOpCode == DXOp::BufferLoad)
+              case DXOp::BufferLoad:
               {
                 // BufferLoad(srv,index,wot)
                 // wot is unused
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
-                const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef)
+                rdcstr handleStr = GetArgId(inst, 1);
+                rdcstr resName = GetHandleAlias(handleStr);
+                if(!resName.isEmpty())
                 {
-                  lineStr += resRef->resourceBase.name;
-                  lineStr += "[" + ArgToString(inst.args[2], false) + "]";
+                  lineStr += resName;
+                  lineStr += "[" + GetArgId(inst, 2) + "]";
                 }
                 else
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if(dxOpCode == DXOp::RawBufferLoad)
+              case DXOp::RawBufferLoad:
               {
                 // RawBufferLoad(srv,index,elementOffset,mask,alignment)
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
-                const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef)
+                rdcstr handleStr = GetArgId(inst, 1);
+                rdcstr resName = GetHandleAlias(handleStr);
+                if(!resName.isEmpty())
                 {
-                  lineStr += resRef->resourceBase.name;
                   if(!isUndef(inst.args[2]))
                   {
-                    lineStr += "[" + ArgToString(inst.args[2], false) + "]";
+                    rdcstr arrayStr = resName + "[" + GetArgId(inst, 2) + "]";
                     if(!isUndef(inst.args[3]))
                     {
+                      // *(&<resName>[<index>] + <elementOffset> bytes)
                       uint32_t elementOffset;
                       if(getival<uint32_t>(inst.args[3], elementOffset))
                       {
                         if(elementOffset > 0)
-                          lineStr += " + " + ToStr(elementOffset) + " bytes";
+                          lineStr += "*(&" + arrayStr + " + " + ToStr(elementOffset) + " bytes)";
+                        else
+                          lineStr += arrayStr;
                       }
                       else
                       {
-                        lineStr += " + " + ArgToString(inst.args[3], false) + " bytes";
+                        lineStr += "*(&" + arrayStr + " + " + GetArgId(inst, 3) + " bytes)";
                       }
+                    }
+                    else
+                    {
+                      lineStr += arrayStr;
                     }
                   }
                   else
                   {
-                    lineStr += "[" + ArgToString(inst.args[3], false) + "]";
+                    lineStr += resName + "[" + GetArgId(inst, 3) + "]";
                   }
                 }
                 else
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if((dxOpCode == DXOp::BufferStore) || (dxOpCode == DXOp::RawBufferStore))
+              case DXOp::BufferStore:
+              case DXOp::RawBufferStore:
               {
                 // BufferStore(uav,coord0,coord1,value0,value1,value2,value3,mask)
                 // RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
-                const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef)
+                rdcstr handleStr = GetArgId(inst, 1);
+                rdcstr resName = GetHandleAlias(handleStr);
+                if(!resName.isEmpty())
                 {
                   uint32_t offset = 0;
                   bool validElementOffset = !isUndef(inst.args[3]);
                   bool constantElementOffset = validElementOffset && getival(inst.args[3], offset);
 
-                  lineStr += resRef->resourceBase.name;
+                  rdcstr arrayStr = resName;
                   uint32_t index;
                   if(getival(inst.args[2], index))
                   {
                     if((offset == 0) || (index > 0))
-                      lineStr += "[" + ToStr(index) + "]";
+                      arrayStr += "[" + ToStr(index) + "]";
                   }
                   else
                   {
-                    lineStr += "[" + ArgToString(inst.args[2], false) + "]";
+                    arrayStr += "[" + GetArgId(inst, 2) + "]";
                   }
                   if(validElementOffset)
                   {
+                    // *(&<resName>[<index>] + <elementOffset> bytes)
                     if(constantElementOffset)
                     {
                       if(offset > 0)
-                        lineStr += " + " + ToStr(offset) + " bytes";
+                        lineStr = "*(&" + arrayStr + " + " + ToStr(offset) + " bytes)";
+                      else
+                        lineStr += arrayStr;
                     }
                     else
                     {
-                      lineStr += " + " + ArgToString(inst.args[3], false) + " bytes";
+                      lineStr += "*(&" + arrayStr + " + " + GetArgId(inst, 3) + " bytes)";
                     }
+                  }
+                  else
+                  {
+                    lineStr += arrayStr;
                   }
                   lineStr += " = ";
                   lineStr += "{";
@@ -2896,7 +3434,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     {
                       if(needComma)
                         lineStr += ", ";
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                       needComma = true;
                     }
                   }
@@ -2906,30 +3444,36 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if(dxOpCode == DXOp::TextureLoad)
+              case DXOp::TextureLoad:
               {
                 // TextureLoad(srv,mipLevelOrSampleCount,coord0,coord1,coord2,offset0,offset1,offset2)
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
+                rdcstr handleStr = GetArgId(inst, 1);
                 const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef)
+                uint32_t sampleCount = 0;
+                if(entryPoint && resRef)
                 {
-                  lineStr += resRef->resourceBase.name;
-                  lineStr += ".Load(";
-                  bool needComma = false;
                   uint32_t resourceIndex = resRef->resourceIndex;
                   const EntryPointInterface::SRV *texture = resourceIndex < entryPoint->srvs.size()
                                                                 ? &entryPoint->srvs[resourceIndex]
                                                                 : NULL;
+                  if(texture)
+                    sampleCount = texture->sampleCount;
+                }
+                rdcstr resName = GetHandleAlias(handleStr);
+                if(!resName.isEmpty())
+                {
+                  lineStr += resName;
+                  lineStr += ".Load(";
+                  bool needComma = false;
                   for(uint32_t a = 3; a < 6; ++a)
                   {
                     if(!isUndef(inst.args[a]))
                     {
                       if(needComma)
                         lineStr += ", ";
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                       needComma = true;
                     }
                   }
@@ -2940,7 +3484,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     bool showArg = true;
                     if(needText)
                     {
-                      if(texture && texture->sampleCount > 1)
+                      if(sampleCount > 1)
                       {
                         prefix = "SampleIndex = ";
                       }
@@ -2957,7 +3501,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                       needText = false;
                       lineStr += ", ";
                       lineStr += prefix;
-                      lineStr += ArgToString(inst.args[2], false);
+                      lineStr += GetArgId(inst, 2);
                     }
                   }
                   needText = true;
@@ -2971,7 +3515,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                         lineStr += "Offset = ";
                         needText = false;
                       }
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                     }
                   }
                   lineStr += ")";
@@ -2980,17 +3524,16 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if(dxOpCode == DXOp::TextureStore)
+              case DXOp::TextureStore:
               {
                 // TextureStore(srv,coord0,coord1,coord2,value0,value1,value2,value3,mask)
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
-                const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef)
+                rdcstr handleStr = GetArgId(inst, 1);
+                rdcstr resName = GetHandleAlias(handleStr);
+                if(!resName.isEmpty())
                 {
-                  lineStr += resRef->resourceBase.name;
+                  lineStr += resName;
                   lineStr += "[";
                   bool needComma = false;
                   for(uint32_t a = 2; a < 5; ++a)
@@ -2999,7 +3542,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     {
                       if(needComma)
                         lineStr += ", ";
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                       needComma = true;
                     }
                   }
@@ -3013,7 +3556,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     {
                       if(needComma)
                         lineStr += ", ";
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                       needComma = true;
                     }
                   }
@@ -3023,12 +3566,17 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if((dxOpCode == DXOp::Sample) || (dxOpCode == DXOp::SampleBias) ||
-                      (dxOpCode == DXOp::SampleLevel) || (dxOpCode == DXOp::SampleGrad) ||
-                      (dxOpCode == DXOp::SampleCmp) || (dxOpCode == DXOp::SampleCmpLevelZero) ||
-                      (dxOpCode == DXOp::SampleCmpLevel) || (dxOpCode == DXOp::SampleCmpGrad) ||
-                      (dxOpCode == DXOp::SampleCmpBias))
+              case DXOp::Sample:
+              case DXOp::SampleBias:
+              case DXOp::SampleLevel:
+              case DXOp::SampleGrad:
+              case DXOp::SampleCmp:
+              case DXOp::SampleCmpLevelZero:
+              case DXOp::SampleCmpLevel:
+              case DXOp::SampleCmpGrad:
+              case DXOp::SampleCmpBias:
               {
                 // Sample(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,clamp)
                 // SampleBias(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,bias,clamp)
@@ -3039,13 +3587,11 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 // SampleCmpLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue,lod)
                 // SampleCmpGrad(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue,ddx0,ddx1,ddx2,ddy0,ddy1,ddy2,clamp)
                 // SampleCmpBias(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,compareValue,bias,clamp)
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
-                const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef)
+                rdcstr handleStr = GetArgId(inst, 1);
+                rdcstr resName = GetHandleAlias(handleStr);
+                if(!resName.isEmpty())
                 {
-                  lineStr += resRef->resourceBase.name;
+                  lineStr += resName;
                   lineStr += ".";
                   rdcstr dxFuncSig = funcNameSigs[(uint32_t)dxOpCode];
                   int paramStart = dxFuncSig.find('(') + 1;
@@ -3055,10 +3601,8 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     lineStr += "UNKNOWN DX FUNCTION";
 
                   // sampler is 2
-                  rdcstr samplerStr = ArgToString(inst.args[2], false);
-                  const ResourceReference *samplerRef = GetResourceReference(samplerStr);
-                  if(samplerRef)
-                    samplerStr = samplerRef->resourceBase.name;
+                  rdcstr samplerStr = GetArgId(inst, 2);
+                  samplerStr = GetHandleAlias(samplerStr);
                   lineStr += samplerStr;
 
                   for(uint32_t a = 3; a < 7; ++a)
@@ -3066,7 +3610,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     if(!isUndef(inst.args[a]))
                     {
                       lineStr += ", ";
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                     }
                   }
                   bool needText = true;
@@ -3080,7 +3624,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                         lineStr += "Offset = {";
                         needText = false;
                       }
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                     }
                   }
                   if(!needText)
@@ -3118,7 +3662,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     {
                       lineStr += ", ";
                       lineStr += paramNameStr;
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                     }
                   }
                   lineStr += ")";
@@ -3127,18 +3671,17 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if(dxOpCode == DXOp::AtomicBinOp)
+              case DXOp::AtomicBinOp:
               {
                 // AtomicBinOp(handle, atomicOp, offset0, offset1, offset2, newValue)
-                showDxFuncName = false;
-
-                rdcstr handleStr = ArgToString(inst.args[1], false);
+                rdcstr handleStr = GetArgId(inst, 1);
                 AtomicBinOpCode atomicBinOpCode;
-                const ResourceReference *resRef = GetResourceReference(handleStr);
-                if(resRef && getival<AtomicBinOpCode>(inst.args[2], atomicBinOpCode))
+                rdcstr resName = GetHandleAlias(handleStr);
+                if(!resName.isEmpty() && getival<AtomicBinOpCode>(inst.args[2], atomicBinOpCode))
                 {
-                  lineStr += resRef->resourceBase.name;
+                  lineStr += resName;
                   lineStr += ".";
                   lineStr += "Interlocked";
                   lineStr += ToStr(atomicBinOpCode);
@@ -3151,7 +3694,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     {
                       if(needComma)
                         lineStr += ", ";
-                      lineStr += ArgToString(inst.args[a], false);
+                      lineStr += GetArgId(inst, a);
                       needComma = true;
                     }
                   }
@@ -3159,7 +3702,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                   if(!isUndef(inst.args[6]))
                   {
                     lineStr += ", ";
-                    lineStr += ArgToString(inst.args[6], false);
+                    lineStr += GetArgId(inst, 6);
                   }
                   lineStr += ")";
                 }
@@ -3167,15 +3710,15 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 {
                   showDxFuncName = true;
                 }
+                break;
               }
-              else if((dxOpCode == DXOp::Dot2) || (dxOpCode == DXOp::Dot3) ||
-                      (dxOpCode == DXOp::Dot4))
+              case DXOp::Dot2:
+              case DXOp::Dot3:
+              case DXOp::Dot4:
               {
                 // Dot4(ax,ay,az,aw,bx,by,bz,bw)
                 // Dot3(ax,ay,az,bx,by,bz)
                 // Dot2(ax,ay,bx,by)
-                showDxFuncName = false;
-
                 uint32_t countComponents = 0;
                 if(dxOpCode == DXOp::Dot4)
                   countComponents = 4;
@@ -3195,7 +3738,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                   {
                     if(needComma)
                       lineStr += ", ";
-                    lineStr += ArgToString(inst.args[a], false);
+                    lineStr += GetArgId(inst, a);
                     needComma = true;
                   }
                 }
@@ -3210,37 +3753,40 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                   {
                     if(needComma)
                       lineStr += ", ";
-                    lineStr += ArgToString(inst.args[a], false);
+                    lineStr += GetArgId(inst, a);
                     needComma = true;
                   }
                 }
                 lineStr += "}";
                 lineStr += ")";
+                break;
               }
+              case DXOp::NumOpCodes: showDxFuncName = false; break;
+              default: showDxFuncName = true; break;
+            }
+            if(dxOpCode != DXOp::NumOpCodes)
+            {
               if(showDxFuncName)
               {
                 rdcstr dxFuncSig;
                 int paramStart = -1;
-                if(Constant *op = cast<Constant>(inst.args[0]))
+                uint32_t opcode = (uint32_t)dxOpCode;
+                if(opcode < ARRAY_COUNT(funcNameSigs))
                 {
-                  uint32_t opcode = op->getU32();
-                  if(opcode < ARRAY_COUNT(funcNameSigs))
-                  {
-                    dxFuncSig = funcNameSigs[opcode];
-                    paramStart = dxFuncSig.find('(') + 1;
-                    if(paramStart > 0)
-                      lineStr += dxFuncSig.substr(0, paramStart);
-                    else
-                      lineStr += dxFuncSig;
-                  }
+                  dxFuncSig = funcNameSigs[opcode];
+                  paramStart = dxFuncSig.find('(') + 1;
+                  if(paramStart > 0)
+                    lineStr += dxFuncSig.substr(0, paramStart);
                   else
-                  {
-                    lineStr += escapeStringIfNeeded(funcCallName);
-                  }
+                    lineStr += dxFuncSig;
+                }
+                else
+                {
+                  lineStr += escapeStringIfNeeded(funcCallName);
                 }
                 bool first = true;
                 int paramStrCount = (int)dxFuncSig.size();
-                for(size_t a = 1; a < inst.args.size(); ++a)
+                for(uint32_t a = 1; a < inst.args.size(); ++a)
                 {
                   rdcstr paramNameStr;
                   if(paramStart < paramStrCount)
@@ -3264,11 +3810,11 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                       lineStr += ", ";
 
                     lineStr += paramNameStr;
-                    rdcstr ssaStr = ArgToString(inst.args[a], false);
-                    if(ssaAliases.count(ssaStr) == 0)
+                    rdcstr ssaStr = GetArgId(inst, a);
+                    if(m_SsaAliases.count(ssaStr) == 0)
                       lineStr += ssaStr;
                     else
-                      lineStr += ssaAliases[ssaStr];
+                      lineStr += m_SsaAliases[ssaStr];
                     first = false;
                   }
                 }
@@ -3339,14 +3885,16 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
               case Operation::FToU:
               case Operation::FToS:
               case Operation::PtrToI:
-              case Operation::SToF: lineStr += "(" + inst.type->toString() + ")"; break;
+              case Operation::SToF:
+                lineStr += "(" + inst.type->toString(dxcStyleFormatting) + ")";
+                break;
               case Operation::IToPtr: lineStr += "(void *)"; break;
               case Operation::AddrSpaceCast: lineStr += "addrspacecast"; break;
               default: break;
             }
             switch(inst.op)
             {
-              case Operation::Trunc: commentStr = "truncate ";
+              case Operation::Trunc: commentStr += "truncate ";
               case Operation::ZExt: commentStr += "zero extend "; break;
               case Operation::SExt: commentStr += "signed extend "; break;
               case Operation::UToF: commentStr += "unsigned "; break;
@@ -3361,14 +3909,14 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             }
 
             lineStr += "(";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ")";
             break;
           }
           case Operation::ExtractVal:
           {
             lineStr += "extractvalue ";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             for(size_t n = 1; n < inst.args.size(); n++)
               lineStr += StringFormat::Fmt(", %llu", cast<Literal>(inst.args[n])->literal);
             break;
@@ -3443,14 +3991,14 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
           {
             lineStr += "return";
             if(!inst.args.empty())
-              lineStr += " " + ArgToString(inst.args[0], false);
+              lineStr += " " + GetArgId(inst, 0);
             break;
           }
           case Operation::Unreachable: lineStr += "unreachable"; break;
           case Operation::Alloca:
           {
             lineStr += "alloca ";
-            lineStr += inst.type->inner->toString();
+            lineStr += inst.type->inner->toString(dxcStyleFormatting);
             if(inst.align > 0)
               lineStr += StringFormat::Fmt(", align %u", (1U << inst.align) >> 1);
             break;
@@ -3461,7 +4009,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             if(!inst.type->isVoid())
             {
               // type "float addrspace(3)*" : addrspace(3) is DXIL specific, see DXIL::Type::PointerAddrSpace
-              rdcstr typeStr = inst.type->toString();
+              rdcstr typeStr = inst.type->toString(dxcStyleFormatting);
               int start = typeStr.find(" addrspace(");
               if(start > 0)
               {
@@ -3486,56 +4034,35 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
 
                   switch(addrspace)
                   {
-                    case DXIL::Type::PointerAddrSpace::Default: lineStr = ""; break;
+                    case DXIL::Type::PointerAddrSpace::Default: resultTypeStr = ""; break;
                     case DXIL::Type::PointerAddrSpace::DeviceMemory:
-                      lineStr = "DeviceMemory";
+                      resultTypeStr = "DeviceMemory";
                       break;
-                    case DXIL::Type::PointerAddrSpace::CBuffer: lineStr = "CBuffer"; break;
-                    case DXIL::Type::PointerAddrSpace::GroupShared: lineStr = "GroupShared"; break;
-                    case DXIL::Type::PointerAddrSpace::GenericPointer: lineStr = ""; break;
+                    case DXIL::Type::PointerAddrSpace::CBuffer: resultTypeStr = "CBuffer"; break;
+                    case DXIL::Type::PointerAddrSpace::GroupShared:
+                      resultTypeStr = "GroupShared";
+                      break;
+                    case DXIL::Type::PointerAddrSpace::GenericPointer: resultTypeStr = ""; break;
                     case DXIL::Type::PointerAddrSpace::ImmediateCBuffer:
-                      lineStr = "ImmediateCBuffer";
+                      resultTypeStr = "ImmediateCBuffer";
                       break;
                   };
 
-                  lineStr += " ";
-                  lineStr += scalarType;
-                  lineStr += "* ";
-
-                  if(!inst.getName().empty())
-                    lineStr += StringFormat::Fmt("%c%s = ", DXIL::dxilIdentifier,
-                                                 escapeStringIfNeeded(inst.getName()).c_str());
-                  else if(inst.slot != ~0U)
-                    lineStr += StringFormat::Fmt("%c%u = ", DXIL::dxilIdentifier, inst.slot);
+                  resultTypeStr += " ";
+                  resultTypeStr += scalarType;
+                  resultTypeStr += "* ";
 
                   // arg[0] : ptr
-                  rdcstr ptrStr = ArgToString(inst.args[0], false);
-                  // Try to de-mangle the pointer name
-                  // @"\01?shared_pos@@3PAY0BC@$$CAMA.1dim" -> shared_pos
-                  // Take the string between first alphabetical character and last
-                  // alphanumeric character or "_"
-                  start = 0;
-                  int strEnd = (int)ptrStr.size();
-                  while(start < strEnd)
+                  rdcstr ptrStr = GetArgId(inst, 0);
+                  // Simple demangle take string between first "?" and next "@"
+                  int nameStart = ptrStr.indexOf('?');
+                  if(nameStart > 0)
                   {
-                    if(isalpha(ptrStr[start]))
-                      break;
-                    ++start;
+                    nameStart++;
+                    int nameEnd = ptrStr.indexOf('@', nameStart);
+                    if(nameEnd > nameStart)
+                      ptrStr = ptrStr.substr(nameStart, nameEnd - nameStart);
                   }
-                  if(start < strEnd)
-                  {
-                    end = start + 1;
-                    while(end < strEnd)
-                    {
-                      char c = ptrStr[end];
-                      if(!isalnum(c) && c != '_')
-                        break;
-                      ++end;
-                    }
-                  }
-                  if(end > start)
-                    ptrStr = ptrStr.substr(start, end - start);
-
                   lineStr += ptrStr;
                   // arg[1] : index 0
                   bool first = true;
@@ -3545,21 +4072,21 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                     if(!getival<uint32_t>(inst.args[1], v) || (v > 0))
                     {
                       lineStr += "[";
-                      lineStr += ArgToString(inst.args[1], false);
+                      lineStr += GetArgId(inst, 1);
                       lineStr += "]";
                       first = false;
                     }
                   }
 
                   // arg[2..] : index 1...N
-                  for(size_t a = 2; a < inst.args.size(); ++a)
+                  for(uint32_t a = 2; a < inst.args.size(); ++a)
                   {
                     if(first)
                       lineStr += "[";
                     else
                       lineStr += " + ";
 
-                    lineStr += ArgToString(inst.args[a], false);
+                    lineStr += GetArgId(inst, a);
 
                     if(first)
                     {
@@ -3612,9 +4139,9 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             if(inst.opFlags() & InstructionFlags::Volatile)
               commentStr += "volatile ";
             lineStr = "*";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += " = ";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             if(inst.align > 0)
               commentStr += StringFormat::Fmt("align %u ", (1U << inst.align) >> 1);
             break;
@@ -3660,9 +4187,9 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
               default: break;
             }
             lineStr += "(";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += opStr;
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             lineStr += ")";
             break;
           }
@@ -3670,11 +4197,11 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
           {
             // ord: yields true if both operands are not a QNAN.
             lineStr += "!isqnan(";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ")";
             lineStr += " && ";
             lineStr += "!isqnan(";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             lineStr += ")";
             break;
           }
@@ -3682,11 +4209,11 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
           {
             // uno: yields true if either operand is a QNAN.
             lineStr += "isqnan(";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ")";
             lineStr += " || ";
             lineStr += "isqnan(";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             lineStr += ")";
             break;
           }
@@ -3723,59 +4250,59 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
               case Operation::SGreater:
               case Operation::SGreaterEqual:
               case Operation::SLess:
-              case Operation::SLessEqual: commentStr = "signed ";
+              case Operation::SLessEqual: commentStr += "signed ";
               default: break;
             }
             lineStr += "(";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += opStr;
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             lineStr += ")";
             break;
           }
           case Operation::Select:
           {
-            lineStr += ArgToString(inst.args[2], false);
+            lineStr += GetArgId(inst, 2);
             lineStr += " ? ";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += " : ";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             break;
           }
           case Operation::ExtractElement:
           {
             lineStr += "extractelement ";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ", ";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             break;
           }
           case Operation::InsertElement:
           {
             lineStr += "insertelement ";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ", ";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             lineStr += ", ";
-            lineStr += ArgToString(inst.args[2], false);
+            lineStr += GetArgId(inst, 2);
             break;
           }
           case Operation::ShuffleVector:
           {
             lineStr += "shufflevector ";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ", ";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             lineStr += ", ";
-            lineStr += ArgToString(inst.args[2], false);
+            lineStr += GetArgId(inst, 2);
             break;
           }
           case Operation::InsertValue:
           {
             lineStr += "insertvalue ";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ", ";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             for(size_t a = 2; a < inst.args.size(); a++)
             {
               lineStr += ", " + ToStr(cast<Literal>(inst.args[a])->literal);
@@ -3787,47 +4314,47 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             if(inst.args.size() > 1)
             {
               lineStr += "if (";
-              lineStr += ArgToString(inst.args[2], false);
+              lineStr += GetArgId(inst, 2);
               lineStr += ") goto ";
-              lineStr += StringFormat::Fmt("%s", ArgToString(inst.args[0], false).c_str());
+              lineStr += StringFormat::Fmt("%s", GetArgId(inst, 0).c_str());
               lineStr += "; else goto ";
-              lineStr += StringFormat::Fmt("%s", ArgToString(inst.args[1], false).c_str());
+              lineStr += StringFormat::Fmt("%s", GetArgId(inst, 1).c_str());
             }
             else
             {
               lineStr += "goto ";
-              lineStr += ArgToString(inst.args[0], false);
+              lineStr += GetArgId(inst, 0);
             }
             break;
           }
           case Operation::Phi:
           {
             lineStr += "phi ";
-            lineStr += inst.type->toString();
-            for(size_t a = 0; a < inst.args.size(); a += 2)
+            lineStr += inst.type->toString(dxcStyleFormatting);
+            for(uint32_t a = 0; a < inst.args.size(); a += 2)
             {
               if(a == 0)
                 lineStr += " ";
               else
                 lineStr += ", ";
-              lineStr += StringFormat::Fmt("[ %s, %s ]", ArgToString(inst.args[a], false).c_str(),
-                                           ArgToString(inst.args[a + 1], false).c_str());
+              lineStr += StringFormat::Fmt("[ %s, %s ]", GetArgId(inst, a).c_str(),
+                                           GetArgId(inst, a + 1).c_str());
             }
             break;
           }
           case Operation::Switch:
           {
             lineStr += "switch ";
-            lineStr += ArgToString(inst.args[0], false);
+            lineStr += GetArgId(inst, 0);
             lineStr += ", ";
-            lineStr += ArgToString(inst.args[1], false);
+            lineStr += GetArgId(inst, 1);
             lineStr += " [";
             lineStr += "\n";
             m_DisassemblyInstructionLine++;
-            for(size_t a = 2; a < inst.args.size(); a += 2)
+            for(uint32_t a = 2; a < inst.args.size(); a += 2)
             {
-              lineStr += StringFormat::Fmt("    %s, %s", ArgToString(inst.args[a], false).c_str(),
-                                           ArgToString(inst.args[a + 1], false).c_str());
+              lineStr += StringFormat::Fmt("    %s, %s", GetArgId(inst, a).c_str(),
+                                           GetArgId(inst, a + 1).c_str());
               lineStr += "\n";
               m_DisassemblyInstructionLine++;
             }
@@ -3952,159 +4479,9 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
             break;
           }
         }
+        if(!resultIdStr.empty())
+          lineStr = resultTypeStr + resultIdStr + " = " + lineStr;
 
-        if(showDxFuncName)
-        {
-          DXOp dxOpCode;
-          RDCASSERT(getival<DXOp>(inst.args[0], dxOpCode));
-          if(dxOpCode == DXOp::AnnotateHandle)
-          {
-            // AnnotateHandle(res,props)
-            if(const Constant *props = cast<Constant>(inst.args[2]))
-            {
-              const Constant *packed[2];
-              if(props && !props->isNULL() && props->getMembers().size() == 2 &&
-                 (packed[0] = cast<Constant>(props->getMembers()[0])) != NULL &&
-                 (packed[1] = cast<Constant>(props->getMembers()[1])) != NULL)
-              {
-                uint32_t packedProps[2] = {};
-                packedProps[0] = packed[0]->getU32();
-                packedProps[1] = packed[1]->getU32();
-
-                bool uav = (packedProps[0] & (1 << 12)) != 0;
-                bool rov = (packedProps[0] & (1 << 13)) != 0;
-                bool globallyCoherent = (packedProps[0] & (1 << 14)) != 0;
-                bool sampelCmpOrCounter = (packedProps[0] & (1 << 15)) != 0;
-                ResourceKind resKind = (ResourceKind)(packedProps[0] & 0xFF);
-                ResourceClass resClass;
-                if(sampelCmpOrCounter && resKind == ResourceKind::Sampler)
-                  resKind = ResourceKind::SamplerComparison;
-                if(resKind == ResourceKind::Sampler || resKind == ResourceKind::SamplerComparison)
-                  resClass = ResourceClass::Sampler;
-                else if(resKind == ResourceKind::CBuffer)
-                  resClass = ResourceClass::CBuffer;
-                else if(uav)
-                  resClass = ResourceClass::UAV;
-                else
-                  resClass = ResourceClass::SRV;
-
-                lineStr += "  resource: ";
-
-                bool srv = (resClass == ResourceClass::SRV);
-
-                ComponentType compType = ComponentType(packedProps[1] & 0xFF);
-                uint8_t compCount = (packedProps[1] & 0xFF00) >> 8;
-
-                uint8_t feedbackType = packedProps[1] & 0xFF;
-
-                uint32_t structStride = packedProps[1];
-
-                switch(resKind)
-                {
-                  case ResourceKind::Unknown: lineStr += "Unknown"; break;
-                  case ResourceKind::Texture1D:
-                  case ResourceKind::Texture2D:
-                  case ResourceKind::Texture2DMS:
-                  case ResourceKind::Texture3D:
-                  case ResourceKind::TextureCube:
-                  case ResourceKind::Texture1DArray:
-                  case ResourceKind::Texture2DArray:
-                  case ResourceKind::Texture2DMSArray:
-                  case ResourceKind::TextureCubeArray:
-                  case ResourceKind::TypedBuffer:
-                    if(globallyCoherent)
-                      lineStr += "globallycoherent ";
-                    if(!srv && rov)
-                      lineStr += "ROV";
-                    else if(!srv)
-                      lineStr += "RW";
-                    switch(resKind)
-                    {
-                      case ResourceKind::Texture1D: lineStr += "Texture1D"; break;
-                      case ResourceKind::Texture2D: lineStr += "Texture2D"; break;
-                      case ResourceKind::Texture2DMS: lineStr += "Texture2DMS"; break;
-                      case ResourceKind::Texture3D: lineStr += "Texture3D"; break;
-                      case ResourceKind::TextureCube: lineStr += "TextureCube"; break;
-                      case ResourceKind::Texture1DArray: lineStr += "Texture1DArray"; break;
-                      case ResourceKind::Texture2DArray: lineStr += "Texture2DArray"; break;
-                      case ResourceKind::Texture2DMSArray: lineStr += "Texture2DMSArray"; break;
-                      case ResourceKind::TextureCubeArray: lineStr += "TextureCubeArray"; break;
-                      case ResourceKind::TypedBuffer: lineStr += "TypedBuffer"; break;
-                      default: break;
-                    }
-                    break;
-                  case ResourceKind::RTAccelerationStructure:
-                    lineStr += "RTAccelerationStructure";
-                    break;
-                  case ResourceKind::FeedbackTexture2D: lineStr += "FeedbackTexture2D"; break;
-                  case ResourceKind::FeedbackTexture2DArray:
-                    lineStr += "FeedbackTexture2DArray";
-                    break;
-                  case ResourceKind::StructuredBuffer:
-                    if(globallyCoherent)
-                      lineStr += "globallycoherent ";
-                    lineStr += srv ? "StructuredBuffer" : "RWStructuredBuffer";
-                    lineStr += StringFormat::Fmt("<stride=%u", structStride);
-                    if(sampelCmpOrCounter)
-                      lineStr += ", counter";
-                    lineStr += ">";
-                    break;
-                  case ResourceKind::StructuredBufferWithCounter:
-                    if(globallyCoherent)
-                      lineStr += "globallycoherent ";
-                    lineStr += srv ? "StructuredBufferWithCounter" : "RWStructuredBufferWithCounter";
-                    lineStr += StringFormat::Fmt("<stride=%u>", structStride);
-                    break;
-                  case ResourceKind::RawBuffer:
-                    if(globallyCoherent)
-                      lineStr += "globallycoherent ";
-                    lineStr += srv ? "ByteAddressBuffer" : "RWByteAddressBuffer";
-                    break;
-                  case ResourceKind::CBuffer:
-                    RDCASSERT(resClass == ResourceClass::CBuffer);
-                    lineStr += "CBuffer";
-                    break;
-                  case ResourceKind::Sampler:
-                    RDCASSERT(resClass == ResourceClass::Sampler);
-                    lineStr += "SamplerState";
-                    break;
-                  case ResourceKind::TBuffer:
-                    RDCASSERT(resClass == ResourceClass::SRV);
-                    lineStr += "TBuffer";
-                    break;
-                  case ResourceKind::SamplerComparison:
-                    RDCASSERT(resClass == ResourceClass::Sampler);
-                    lineStr += "SamplerComparisonState";
-                    break;
-                }
-
-                if(resKind == ResourceKind::FeedbackTexture2D ||
-                   resKind == ResourceKind::FeedbackTexture2DArray)
-                {
-                  if(feedbackType == 0)
-                    lineStr += "<MinMip>";
-                  else if(feedbackType == 1)
-                    lineStr += "<MipRegionUsed>";
-                  else
-                    lineStr += "<Invalid>";
-                }
-                else if(resKind == ResourceKind::Texture1D || resKind == ResourceKind::Texture2D ||
-                        resKind == ResourceKind::Texture3D || resKind == ResourceKind::TextureCube ||
-                        resKind == ResourceKind::Texture1DArray ||
-                        resKind == ResourceKind::Texture2DArray ||
-                        resKind == ResourceKind::TextureCubeArray ||
-                        resKind == ResourceKind::TypedBuffer || resKind == ResourceKind::Texture2DMS ||
-                        resKind == ResourceKind::Texture2DMSArray)
-                {
-                  lineStr += "<";
-                  if(compCount > 1)
-                    lineStr += StringFormat::Fmt("%dx", compCount);
-                  lineStr += StringFormat::Fmt("%s>", ToStr(compType).c_str());
-                }
-              }
-            }
-          }
-        }
         if(!lineStr.empty())
         {
           lineStr += ";";
@@ -4129,10 +4506,9 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
           rdcstr labelName;
 
           if(func.blocks[curBlock]->name.empty())
-            labelName =
-                StringFormat::Fmt("%clabel%u: ", DXIL::dxilIdentifier, func.blocks[curBlock]->slot);
+            labelName = StringFormat::Fmt("%clabel%u: ", dxilIdentifier, func.blocks[curBlock]->slot);
           else
-            labelName = StringFormat::Fmt("%clabel_%s%u: ", DXIL::dxilIdentifier,
+            labelName = StringFormat::Fmt("%clabel_%s%u: ", dxilIdentifier,
                                           DXBC::BasicDemangle(func.blocks[curBlock]->name).c_str(),
                                           func.blocks[curBlock]->id);
 
@@ -4152,7 +4528,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
                 if(!first)
                   predicates += ", ";
                 first = false;
-                predicates += StringFormat::Fmt("%clabel%u", DXIL::dxilIdentifier, pred->slot);
+                predicates += StringFormat::Fmt("%clabel%u", dxilIdentifier, pred->slot);
               }
             }
             else
@@ -4160,12 +4536,12 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
               if(!first)
                 predicates += ", ";
               first = false;
-              predicates += StringFormat::Fmt("%clabel_%s%u", DXIL::dxilIdentifier,
+              predicates += StringFormat::Fmt("%clabel_%s%u", dxilIdentifier,
                                               DXBC::BasicDemangle(pred->name).c_str(), pred->id);
             }
           }
           if(!predicates.empty())
-            labelName += "// preceeded by " + predicates;
+            labelName += "// preceded by " + predicates;
 
           m_Disassembly += labelName;
           DisassemblyAddNewLine();
@@ -4194,6 +4570,7 @@ void Program::MakeRDDisassemblyString(const DXBC::Reflection *reflection)
 
 void Program::ParseReferences(const DXBC::Reflection *reflection)
 {
+  uint32_t heapDescriptorResourceCount = 0;
   for(size_t i = 0; i < m_Functions.size(); i++)
   {
     const Function &func = *m_Functions[i];
@@ -4212,7 +4589,9 @@ void Program::ParseReferences(const DXBC::Reflection *reflection)
         break;
       }
     }
-    RDCASSERT(entryPoint);
+    // Ignore functions which are not an entry point
+    if(!entryPoint)
+      continue;
 
     // Use resource names from the reflection data if the resource name data is empty
     if(reflection)
@@ -4276,11 +4655,7 @@ void Program::ParseReferences(const DXBC::Reflection *reflection)
     {
       Instruction &inst = *func.instructions[funcIdx];
       rdcstr resultIdStr;
-      if(!inst.getName().empty())
-        resultIdStr = StringFormat::Fmt("%c%s", DXIL::dxilIdentifier,
-                                        escapeStringIfNeeded(inst.getName()).c_str());
-      else if(inst.slot != ~0U)
-        resultIdStr = StringFormat::Fmt("%c%s", DXIL::dxilIdentifier, ToStr(inst.slot).c_str());
+      MakeResultId(inst, resultIdStr);
 
       switch(inst.op)
       {
@@ -4291,35 +4666,198 @@ void Program::ParseReferences(const DXBC::Reflection *reflection)
           {
             DXOp dxOpCode;
             RDCASSERT(getival<DXOp>(inst.args[0], dxOpCode));
-            if(dxOpCode == DXOp::CreateHandle)
+            switch(dxOpCode)
             {
-              ResourceClass resClass;
-              uint32_t resIndex;
-              if(getival<ResourceClass>(inst.args[1], resClass) &&
-                 getival<uint32_t>(inst.args[2], resIndex))
+              case DXOp::CreateHandle:
+              case DXOp::CreateHandleFromBinding:
               {
+                // CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+                // CreateHandleFromBinding(bind,index,nonUniformIndex)
+                uint32_t resIndexArgId = 3;
+                uint32_t nonUniformIndexArgId = 4;
+                bool validBinding = false;
                 EntryPointInterface::ResourceBase *resourceBase = NULL;
-                switch(resClass)
+                rdcstr resName;
+                uint32_t resIndex = 0;
+                if(dxOpCode == DXOp::CreateHandle)
                 {
-                  case ResourceClass::SRV: resourceBase = &entryPoint->srvs[resIndex]; break;
-                  case ResourceClass::UAV: resourceBase = &entryPoint->uavs[resIndex]; break;
-                  case ResourceClass::CBuffer:
-                    resourceBase = &entryPoint->cbuffers[resIndex];
-                    break;
-                  case ResourceClass::Sampler:
-                    resourceBase = &entryPoint->samplers[resIndex];
-                    break;
-                  default: break;
-                };
+                  ResourceClass resClass;
+                  validBinding = getival<ResourceClass>(inst.args[1], resClass) &&
+                                 getival<uint32_t>(inst.args[2], resIndex);
+                  if(validBinding)
+                  {
+                    switch(resClass)
+                    {
+                      case ResourceClass::SRV: resourceBase = &entryPoint->srvs[resIndex]; break;
+                      case ResourceClass::UAV: resourceBase = &entryPoint->uavs[resIndex]; break;
+                      case ResourceClass::CBuffer:
+                        resourceBase = &entryPoint->cbuffers[resIndex];
+                        break;
+                      case ResourceClass::Sampler:
+                        resourceBase = &entryPoint->samplers[resIndex];
+                        break;
+                      default: break;
+                    };
+                  }
+                  else
+                  {
+                    resName = "ResourceClass:" + GetArgId(inst, 1);
+                    resName += "[" + GetArgId(inst, 2) + "]";
+                    resName += "[" + GetArgId(inst, resIndexArgId) + "]";
+                  }
+                }
+                else
+                {
+                  resIndexArgId = 2;
+                  nonUniformIndexArgId = 3;
+                  if(const Constant *props = cast<Constant>(inst.args[1]))
+                  {
+                    if(props && !props->isNULL() && props->getMembers().size() >= 4)
+                    {
+                      const rdcarray<Value *> &members = props->getMembers();
+                      uint32_t lowerBound;
+                      uint32_t upperBound;
+                      uint32_t spaceID;
+                      ResourceClass resClass;
+                      validBinding = getival<uint32_t>(members[0], lowerBound);
+                      validBinding &= getival<uint32_t>(members[1], upperBound);
+                      validBinding &= getival<uint32_t>(members[2], spaceID);
+                      validBinding &= getival<ResourceClass>(members[3], resClass);
+                      // Search through the resources to find the binding
+                      if(validBinding)
+                      {
+                        switch(resClass)
+                        {
+                          case ResourceClass::SRV:
+                          {
+                            for(uint32_t r = 0; r < entryPoint->srvs.size(); ++r)
+                            {
+                              EntryPointInterface::ResourceBase *res = &entryPoint->srvs[r];
+                              if(res->MatchesBinding(lowerBound, upperBound, spaceID))
+                              {
+                                resIndex = r;
+                                resourceBase = res;
+                                break;
+                              }
+                            }
+                            break;
+                          }
+                          case ResourceClass::UAV:
+                          {
+                            for(uint32_t r = 0; r < entryPoint->uavs.size(); ++r)
+                            {
+                              EntryPointInterface::ResourceBase *res = &entryPoint->uavs[r];
+                              if(res->MatchesBinding(lowerBound, upperBound, spaceID))
+                              {
+                                resIndex = r;
+                                resourceBase = res;
+                                break;
+                              }
+                            }
+                            break;
+                          }
+                          case ResourceClass::CBuffer:
+                          {
+                            for(uint32_t r = 0; r < entryPoint->cbuffers.size(); ++r)
+                            {
+                              EntryPointInterface::ResourceBase *res = &entryPoint->cbuffers[r];
+                              if(res->MatchesBinding(lowerBound, upperBound, spaceID))
+                              {
+                                resIndex = r;
+                                resourceBase = res;
+                                break;
+                              }
+                            }
+                            break;
+                          }
+                          case ResourceClass::Sampler:
+                          {
+                            for(uint32_t r = 0; r < entryPoint->samplers.size(); ++r)
+                            {
+                              EntryPointInterface::ResourceBase *res = &entryPoint->samplers[r];
+                              if(res->MatchesBinding(lowerBound, upperBound, spaceID))
+                              {
+                                resIndex = r;
+                                resourceBase = res;
+                                break;
+                              }
+                            }
+                            break;
+                            default: break;
+                          }
+                        }
+                        if(!resourceBase)
+                        {
+                          resName = "ResourceClass:" + GetArgId(inst, 1);
+                          resName += "[" + GetArgId(inst, 2) + "]";
+                          resName += "[" + GetArgId(inst, resIndexArgId) + "]";
+                        }
+                      }
+                    }
+                  }
+                }
+
                 if(resourceBase)
                 {
-                  const rdcstr &handleStr = resultIdStr;
-                  RDCASSERT(!GetResourceReference(handleStr));
-                  ResourceReference resRef(handleStr, *resourceBase, resIndex);
-                  m_ResourceHandles[handleStr] = m_ResourceHandles.size();
+                  RDCASSERT(!GetResourceReference(resultIdStr));
+                  ResourceReference resRef(resultIdStr, *resourceBase, resIndex);
+                  m_ResourceHandles[resultIdStr] = m_ResourceHandles.size();
                   m_ResourceReferences.push_back(resRef);
+                  resName = resourceBase->name;
+                  uint32_t index = 0;
+                  if(getival<uint32_t>(inst.args[resIndexArgId], index))
+                  {
+                    if(index != resIndex)
+                    {
+                      if(resourceBase->regCount > 1)
+                        resName += StringFormat::Fmt("[%u]", index);
+                    }
+                  }
+                  else
+                  {
+                    if(resourceBase->regCount > 1)
+                      resName += "[" + GetArgId(inst, resIndexArgId) + "]";
+                  }
                 }
+                if(!resName.isEmpty())
+                  m_SsaAliases[resultIdStr] = resName;
+                break;
               }
+              case DXOp::CreateHandleFromHeap:
+              {
+                // CreateHandleFromHeap(index,samplerHeap,nonUniformIndex)
+                uint32_t samplerHeap;
+                if(getival<uint32_t>(inst.args[2], samplerHeap))
+                {
+                  rdcstr resName =
+                      (samplerHeap == 0) ? "ResourceDescriptorHeap" : "SamplerDescriptorHeap";
+
+                  resName += "[";
+                  resName += GetArgId(inst, 1);
+                  resName += "]";
+
+                  m_SsaAliases[resultIdStr] = resName;
+                }
+                break;
+              }
+              case DXOp::AnnotateHandle:
+              {
+                // AnnotateHandle(res,props)
+                rdcstr resName = "__heap_descriptor_" + ToStr(heapDescriptorResourceCount);
+                heapDescriptorResourceCount += 1;
+                m_SsaAliases[resultIdStr] = resName;
+                // If the underlying handle points to a known resource then duplicate the resource
+                // and register it as resultIdStr
+                rdcstr baseResource = GetArgId(inst, 1);
+                const ResourceReference *resRef = GetResourceReference(baseResource);
+                if(resRef)
+                {
+                  m_ResourceHandles[resultIdStr] = m_ResourceHandles.size();
+                  m_ResourceReferences.push_back(*resRef);
+                }
+                break;
+              }
+              default: break;
             }
           }
         }
@@ -4329,11 +4867,12 @@ void Program::ParseReferences(const DXBC::Reflection *reflection)
   }
 }
 
-rdcstr Type::toString() const
+rdcstr Type::toString(bool dxcStyleFormatting) const
 {
+  const char dxilIdentifier = Program::GetDXILIdentifier(dxcStyleFormatting);
   if(!name.empty())
   {
-    return StringFormat::Fmt("%c%s", DXIL::dxilIdentifier, escapeStringIfNeeded(name).c_str());
+    return StringFormat::Fmt("%c%s", dxilIdentifier, escapeStringIfNeeded(name).c_str());
   }
 
   switch(type)
@@ -4344,7 +4883,7 @@ rdcstr Type::toString() const
       {
         case Void: return "void";
         case Int:
-          if(DXIL::dxcStyleFormatting)
+          if(dxcStyleFormatting)
           {
             return StringFormat::Fmt("i%u", bitWidth);
           }
@@ -4372,33 +4911,35 @@ rdcstr Type::toString() const
     }
     case Vector:
     {
-      if(DXIL::dxcStyleFormatting)
-        return StringFormat::Fmt("<%u x %s>", elemCount, inner->toString().c_str());
+      if(dxcStyleFormatting)
+        return StringFormat::Fmt("<%u x %s>", elemCount, inner->toString(dxcStyleFormatting).c_str());
       else
-        return StringFormat::Fmt("%s%u", inner->toString().c_str(), elemCount);
+        return StringFormat::Fmt("%s%u", inner->toString(dxcStyleFormatting).c_str(), elemCount);
     }
     case Pointer:
     {
       if(inner->type == Type::Function)
       {
         if(addrSpace == Type::PointerAddrSpace::Default)
-          return inner->toString();
+          return inner->toString(dxcStyleFormatting);
         else
-          return StringFormat::Fmt("%s addrspace(%d)", inner->toString().c_str(), addrSpace);
+          return StringFormat::Fmt("%s addrspace(%d)", inner->toString(dxcStyleFormatting).c_str(),
+                                   addrSpace);
       }
       if(addrSpace == Type::PointerAddrSpace::Default)
-        return StringFormat::Fmt("%s*", inner->toString().c_str());
+        return StringFormat::Fmt("%s*", inner->toString(dxcStyleFormatting).c_str());
       else
-        return StringFormat::Fmt("%s addrspace(%d)*", inner->toString().c_str(), addrSpace);
+        return StringFormat::Fmt("%s addrspace(%d)*", inner->toString(dxcStyleFormatting).c_str(),
+                                 addrSpace);
     }
     case Array:
     {
-      if(DXIL::dxcStyleFormatting)
-        return StringFormat::Fmt("[%u x %s]", elemCount, inner->toString().c_str());
+      if(dxcStyleFormatting)
+        return StringFormat::Fmt("[%u x %s]", elemCount, inner->toString(dxcStyleFormatting).c_str());
       else
-        return StringFormat::Fmt("%s[%u]", inner->toString().c_str(), elemCount);
+        return StringFormat::Fmt("%s[%u]", inner->toString(dxcStyleFormatting).c_str(), elemCount);
     }
-    case Function: return declFunction(rdcstr(), {}, NULL) + "*";
+    case Function: return declFunction(rdcstr(), {}, NULL, dxcStyleFormatting) + "*";
     case Struct:
     {
       rdcstr ret;
@@ -4410,7 +4951,7 @@ rdcstr Type::toString() const
       {
         if(i > 0)
           ret += ", ";
-        ret += members[i]->toString();
+        ret += members[i]->toString(dxcStyleFormatting);
       }
       if(packedStruct)
         ret += " }>";
@@ -4426,15 +4967,15 @@ rdcstr Type::toString() const
 }
 
 rdcstr Type::declFunction(rdcstr funcName, const rdcarray<Instruction *> &args,
-                          const AttributeSet *attrs) const
+                          const AttributeSet *attrs, bool dxcStyleFormatting) const
 {
-  rdcstr ret = inner->toString();
+  rdcstr ret = inner->toString(dxcStyleFormatting);
   ret += " " + funcName + "(";
   for(size_t i = 0; i < members.size(); i++)
   {
     if(i > 0)
       ret += ", ";
-    ret += members[i]->toString();
+    ret += members[i]->toString(dxcStyleFormatting);
 
     if(attrs && i + 1 < attrs->groupSlots.size() && attrs->groupSlots[i + 1])
     {
@@ -4501,34 +5042,36 @@ rdcstr AttributeGroup::toString(bool stringAttrs) const
   return ret.trimmed();
 }
 
-rdcstr Metadata::refString() const
+rdcstr Metadata::refString(bool dxcStyleFormatting) const
 {
   if(slot == ~0U)
-    return valString();
+    return valString(dxcStyleFormatting);
   return StringFormat::Fmt("!%u", slot);
 }
 
-rdcstr DebugLocation::toString() const
+rdcstr DebugLocation::toString(bool dxcStyleFormatting) const
 {
   rdcstr ret = StringFormat::Fmt("!DILocation(line: %llu", line);
   if(col)
     ret += StringFormat::Fmt(", column: %llu", col);
-  ret += StringFormat::Fmt(", scope: %s", scope ? scope->refString().c_str() : "null");
+  ret += StringFormat::Fmt(", scope: %s",
+                           scope ? scope->refString(dxcStyleFormatting).c_str() : "null");
   if(inlinedAt)
-    ret += StringFormat::Fmt(", inlinedAt: %s", inlinedAt->refString().c_str());
+    ret += StringFormat::Fmt(", inlinedAt: %s", inlinedAt->refString(dxcStyleFormatting).c_str());
   ret += ")";
   return ret;
 }
 
-rdcstr Metadata::valString() const
+rdcstr Metadata::valString(bool dxcStyleFormatting) const
 {
+  const char dxilIdentifier = Program::GetDXILIdentifier(dxcStyleFormatting);
   if(dwarf)
   {
-    return dwarf->toString();
+    return dwarf->toString(dxcStyleFormatting);
   }
   else if(debugLoc)
   {
-    return debugLoc->toString();
+    return debugLoc->toString(dxcStyleFormatting);
   }
   else if(isConstant)
   {
@@ -4556,15 +5099,15 @@ rdcstr Metadata::valString() const
       if(i)
       {
         if(i->getName().empty())
-          return StringFormat::Fmt("%s %c%u", i->type->toString().c_str(), DXIL::dxilIdentifier,
-                                   i->slot);
+          return StringFormat::Fmt("%s %c%u", i->type->toString(dxcStyleFormatting).c_str(),
+                                   dxilIdentifier, i->slot);
         else
-          return StringFormat::Fmt("%s %c%s", i->type->toString().c_str(), DXIL::dxilIdentifier,
-                                   escapeStringIfNeeded(i->getName()).c_str());
+          return StringFormat::Fmt("%s %c%s", i->type->toString(dxcStyleFormatting).c_str(),
+                                   dxilIdentifier, escapeStringIfNeeded(i->getName()).c_str());
       }
       else if(value)
       {
-        return value->toString(true);
+        return value->toString(dxcStyleFormatting, true);
       }
       else
       {
@@ -4583,7 +5126,7 @@ rdcstr Metadata::valString() const
       if(!children[i])
         ret += "null";
       else if(children[i]->isConstant)
-        ret += children[i]->valString();
+        ret += children[i]->valString(dxcStyleFormatting);
       else
         ret += StringFormat::Fmt("!%u", children[i]->slot);
     }
@@ -4593,9 +5136,10 @@ rdcstr Metadata::valString() const
   }
 }
 
-static void floatAppendToString(const Type *t, const ShaderValue &val, uint32_t i, rdcstr &ret)
+static void floatAppendToString(const Type *t, const ShaderValue &val, uint32_t i, rdcstr &ret,
+                                bool dxcStyleFormatting)
 {
-  if(DXIL::dxcStyleFormatting)
+  if(dxcStyleFormatting)
   {
 #if ENABLED(DXC_COMPATIBLE_DISASM)
     // dxc/llvm always prints half floats as their 16-bit hex representation.
@@ -4612,14 +5156,14 @@ static void floatAppendToString(const Type *t, const ShaderValue &val, uint32_t 
   // NaNs/infs are printed as hex to ensure we don't lose bits
   if(RDCISFINITE(d))
   {
-    if(DXIL::dxcStyleFormatting)
+    if(dxcStyleFormatting)
     {
       // check we can reparse precisely a float-formatted string. Otherwise we print as hex
       rdcstr flt = StringFormat::Fmt("%.6le", d);
 
 #if ENABLED(DXC_COMPATIBLE_DISASM)
-      // dxc/llvm only prints floats as floats if they roundtrip, but our disassembly doesn't need
-      // to roundtrip so it's better to display the value in all cases
+      // dxc/llvm only prints floats as floats if they roundtrip, but our disassembly doesn't
+      // need to roundtrip so it's better to display the value in all cases
       double reparse = strtod(flt.begin(), NULL);
 
       if(d == reparse)
@@ -4645,11 +5189,12 @@ static void floatAppendToString(const Type *t, const ShaderValue &val, uint32_t 
   ret += StringFormat::Fmt("0x%llX", d);
 }
 
-void shaderValAppendToString(const Type *type, const ShaderValue &val, uint32_t i, rdcstr &ret)
+void shaderValAppendToString(const Type *type, const ShaderValue &val, uint32_t i, rdcstr &ret,
+                             bool dxcStyleFormatting)
 {
   if(type->scalarType == Type::Float)
   {
-    floatAppendToString(type, val, i, ret);
+    floatAppendToString(type, val, i, ret, dxcStyleFormatting);
   }
   else if(type->scalarType == Type::Int)
   {
@@ -4663,13 +5208,13 @@ void shaderValAppendToString(const Type *type, const ShaderValue &val, uint32_t 
   }
 }
 
-rdcstr Value::toString(bool withType) const
+rdcstr Value::toString(bool dxcStyleFormatting, bool withType) const
 {
   rdcstr ret;
   if(withType)
   {
     if(type)
-      ret += type->toString() + " ";
+      ret += type->toString(dxcStyleFormatting) + " ";
     else
       RDCERR("Type requested in value string, but no type available");
   }
@@ -4684,7 +5229,9 @@ rdcstr Value::toString(bool withType) const
     case ValueKind::Alias:
       ret += StringFormat::Fmt("@%s", escapeStringIfNeeded(cast<Alias>(this)->name).c_str());
       break;
-    case ValueKind::Constant: return cast<Constant>(this)->toString(withType); break;
+    case ValueKind::Constant:
+      return cast<Constant>(this)->toString(dxcStyleFormatting, withType);
+      break;
     case ValueKind::ForwardReferencePlaceholder:
       RDCERR("forward-reference value being stringised");
       ret += "???";
@@ -4700,14 +5247,14 @@ rdcstr Value::toString(bool withType) const
   return ret;
 }
 
-rdcstr Constant::toString(bool withType) const
+rdcstr Constant::toString(bool dxcStyleFormatting, bool withType) const
 {
   if(type == NULL)
     return escapeString(str);
 
   rdcstr ret;
   if(withType)
-    ret += type->toString() + " ";
+    ret += type->toString(dxcStyleFormatting) + " ";
   if(isUndef())
   {
     ret += "undef";
@@ -4722,13 +5269,13 @@ rdcstr Constant::toString(bool withType) const
         ret += "getelementptr inbounds (";
 
         const Type *baseType = members->at(0)->type;
-        RDCASSERT(baseType->type == Type::Pointer);
-        ret += baseType->inner->toString();
+        RDCASSERTEQUAL(baseType->type, Type::Pointer);
+        ret += baseType->inner->toString(dxcStyleFormatting);
         for(size_t i = 0; i < members->size(); i++)
         {
           ret += ", ";
 
-          ret += members->at(i)->toString(withType);
+          ret += members->at(i)->toString(dxcStyleFormatting, withType);
         }
         ret += ")";
         break;
@@ -4766,9 +5313,9 @@ rdcstr Constant::toString(bool withType) const
         }
 
         ret += "(";
-        ret += inner->toString(withType);
+        ret += inner->toString(dxcStyleFormatting, withType);
         ret += " to ";
-        ret += type->toString();
+        ret += type->toString(dxcStyleFormatting);
         ret += ")";
         break;
       }
@@ -4825,11 +5372,11 @@ rdcstr Constant::toString(bool withType) const
             ShaderValue v;
             v.u64v[0] = l->literal;
 
-            shaderValAppendToString(members->at(i)->type, v, 0, ret);
+            shaderValAppendToString(members->at(i)->type, v, 0, ret, dxcStyleFormatting);
           }
           else
           {
-            ret += members->at(i)->toString(withType);
+            ret += members->at(i)->toString(dxcStyleFormatting, withType);
           }
         }
 
@@ -4843,7 +5390,7 @@ rdcstr Constant::toString(bool withType) const
   {
     ShaderValue v;
     v.u64v[0] = u64;
-    shaderValAppendToString(type, v, 0, ret);
+    shaderValAppendToString(type, v, 0, ret, dxcStyleFormatting);
   }
   else if(isNULL())
   {
@@ -4879,11 +5426,11 @@ rdcstr Constant::toString(bool withType) const
       if(i > 0)
         ret += ", ";
       if(withType)
-        ret += type->inner->toString() + " ";
+        ret += type->inner->toString(dxcStyleFormatting) + " ";
       if(isCompound() && cast<Constant>(members->at(i))->isUndef())
         ret += "undef";
       else
-        shaderValAppendToString(type, v, i, ret);
+        shaderValAppendToString(type, v, i, ret, dxcStyleFormatting);
     }
     ret += ">";
   }
@@ -4904,16 +5451,16 @@ rdcstr Constant::toString(bool withType) const
         if(Literal *l = cast<Literal>(members->at(i)))
         {
           if(withType)
-            ret += type->inner->toString() + " ";
+            ret += type->inner->toString(dxcStyleFormatting) + " ";
 
           ShaderValue v;
           v.u64v[0] = l->literal;
 
-          shaderValAppendToString(type->inner, v, 0, ret);
+          shaderValAppendToString(type->inner, v, 0, ret, dxcStyleFormatting);
         }
         else
         {
-          ret += members->at(i)->toString(withType);
+          ret += members->at(i)->toString(dxcStyleFormatting, withType);
         }
       }
       ret += "]";
@@ -4958,11 +5505,11 @@ rdcstr Constant::toString(bool withType) const
           ShaderValue v;
           v.u64v[0] = l->literal;
 
-          shaderValAppendToString(members->at(i)->type, v, 0, ret);
+          shaderValAppendToString(members->at(i)->type, v, 0, ret, dxcStyleFormatting);
         }
         else
         {
-          ret += members->at(i)->toString(withType);
+          ret += members->at(i)->toString(dxcStyleFormatting, withType);
         }
       }
       ret += " }";
@@ -4975,203 +5522,17 @@ rdcstr Constant::toString(bool withType) const
 
   return ret;
 }
+
+rdcstr Program::GetArgId(const Instruction &inst, uint32_t arg) const
+{
+  return ArgToString(inst.args[arg], false);
+}
+
+void Program::MakeResultId(const DXIL::Instruction &inst, rdcstr &resultId)
+{
+  if(!inst.getName().empty())
+    resultId = StringFormat::Fmt("%c%s", '_', escapeStringIfNeeded(inst.getName()).c_str());
+  else if(inst.slot != ~0U)
+    resultId = StringFormat::Fmt("%c%s", '_', ToStr(inst.slot).c_str());
+}
 };    // namespace DXIL
-
-template <>
-rdcstr DoStringise(const DXIL::InstructionFlags &el)
-{
-  BEGIN_BITFIELD_STRINGISE(DXIL::InstructionFlags);
-  {
-    STRINGISE_BITFIELD_CLASS_VALUE_NAMED(NoFlags, "");
-
-    // llvm doesn't print all bits if fastmath is set
-    if(el & DXIL::InstructionFlags::FastMath)
-      return "fast";
-
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoNaNs, "nnan");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoInfs, "ninf");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoSignedZeros, "nsz");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(AllowReciprocal, "arcp");
-
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoUnsignedWrap, "nuw");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoSignedWrap, "nsw");
-
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Exact, "exact");
-  }
-  END_BITFIELD_STRINGISE();
-}
-
-template <>
-rdcstr DoStringise(const DXIL::Attribute &el)
-{
-  BEGIN_BITFIELD_STRINGISE(DXIL::Attribute);
-  {
-    STRINGISE_BITFIELD_CLASS_VALUE_NAMED(None, "");
-
-    // these bits are ordered not in declaration order (which matches how they're serialised) but in
-    // the (mostly but not quite) alphabetical order since that's how LLVM prints them
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Alignment, "alignment");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(AlwaysInline, "alwaysinline");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Builtin, "builtin");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(ByVal, "byval");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(InAlloca, "inalloca");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Cold, "cold");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Convergent, "convergent");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(InlineHint, "inlinehint");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(InReg, "inreg");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(JumpTable, "jumptable");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(MinSize, "minsize");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Naked, "naked");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Nest, "nest");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoAlias, "noalias");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoBuiltin, "nobuiltin");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoCapture, "nocapture");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoDuplicate, "noduplicate");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoImplicitFloat, "noimplicitfloat");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoInline, "noinline");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NonLazyBind, "nonlazybind");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NonNull, "nonnull");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Dereferenceable, "dereferenceable");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(DereferenceableOrNull, "dereferenceable_or_null");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoRedZone, "noredzone");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoReturn, "noreturn");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(NoUnwind, "nounwind");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(OptimizeForSize, "optsize");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(OptimizeNone, "optnone");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(ReadNone, "readnone");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(ReadOnly, "readonly");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(ArgMemOnly, "argmemonly");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(Returned, "returned");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(ReturnsTwice, "returns_twice");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(SExt, "signext");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(StackAlignment, "alignstack");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(StackProtect, "ssp");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(StackProtectReq, "sspreq");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(StackProtectStrong, "sspstrong");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(SafeStack, "safestack");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(StructRet, "sret");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(SanitizeAddress, "sanitize_address");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(SanitizeThread, "sanitize_thread");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(SanitizeMemory, "sanitize_memory");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(UWTable, "uwtable");
-    STRINGISE_BITFIELD_CLASS_BIT_NAMED(ZExt, "zeroext");
-  }
-  END_BITFIELD_STRINGISE();
-}
-
-template <>
-rdcstr DoStringise(const DXIL::AtomicBinOpCode &el)
-{
-  BEGIN_ENUM_STRINGISE(DXIL::AtomicBinOpCode)
-  {
-    STRINGISE_ENUM_CLASS(Add)
-    STRINGISE_ENUM_CLASS(And)
-    STRINGISE_ENUM_CLASS(Or)
-    STRINGISE_ENUM_CLASS(Xor)
-    STRINGISE_ENUM_CLASS(IMin)
-    STRINGISE_ENUM_CLASS(IMax)
-    STRINGISE_ENUM_CLASS(UMin)
-    STRINGISE_ENUM_CLASS(UMax)
-    STRINGISE_ENUM_CLASS(Exchange)
-    STRINGISE_ENUM_CLASS_NAMED(Invalid, "<invalid AtommicBinOpCode>");
-  }
-  END_ENUM_STRINGISE();
-}
-
-template <>
-rdcstr DoStringise(const DXIL::Operation &el)
-{
-  BEGIN_ENUM_STRINGISE(DXIL::Operation)
-  {
-    STRINGISE_ENUM_CLASS(NoOp)
-    STRINGISE_ENUM_CLASS(Call)
-    STRINGISE_ENUM_CLASS(Trunc)
-    STRINGISE_ENUM_CLASS(ZExt)
-    STRINGISE_ENUM_CLASS(SExt)
-    STRINGISE_ENUM_CLASS(FToU)
-    STRINGISE_ENUM_CLASS(FToS)
-    STRINGISE_ENUM_CLASS(UToF)
-    STRINGISE_ENUM_CLASS(SToF)
-    STRINGISE_ENUM_CLASS(FPTrunc)
-    STRINGISE_ENUM_CLASS(FPExt)
-    STRINGISE_ENUM_CLASS(PtrToI)
-    STRINGISE_ENUM_CLASS(IToPtr)
-    STRINGISE_ENUM_CLASS(Bitcast)
-    STRINGISE_ENUM_CLASS(AddrSpaceCast)
-    STRINGISE_ENUM_CLASS(ExtractVal)
-    STRINGISE_ENUM_CLASS(Ret)
-    STRINGISE_ENUM_CLASS(FAdd)
-    STRINGISE_ENUM_CLASS(FSub)
-    STRINGISE_ENUM_CLASS(FMul)
-    STRINGISE_ENUM_CLASS(FDiv)
-    STRINGISE_ENUM_CLASS(FRem)
-    STRINGISE_ENUM_CLASS(Add)
-    STRINGISE_ENUM_CLASS(Sub)
-    STRINGISE_ENUM_CLASS(Mul)
-    STRINGISE_ENUM_CLASS(UDiv)
-    STRINGISE_ENUM_CLASS(SDiv)
-    STRINGISE_ENUM_CLASS(URem)
-    STRINGISE_ENUM_CLASS(SRem)
-    STRINGISE_ENUM_CLASS(ShiftLeft)
-    STRINGISE_ENUM_CLASS(LogicalShiftRight)
-    STRINGISE_ENUM_CLASS(ArithShiftRight)
-    STRINGISE_ENUM_CLASS(And)
-    STRINGISE_ENUM_CLASS(Or)
-    STRINGISE_ENUM_CLASS(Xor)
-    STRINGISE_ENUM_CLASS(Unreachable)
-    STRINGISE_ENUM_CLASS(Alloca)
-    STRINGISE_ENUM_CLASS(GetElementPtr)
-    STRINGISE_ENUM_CLASS(Load)
-    STRINGISE_ENUM_CLASS(Store)
-    STRINGISE_ENUM_CLASS(FOrdFalse)
-    STRINGISE_ENUM_CLASS(FOrdEqual)
-    STRINGISE_ENUM_CLASS(FOrdGreater)
-    STRINGISE_ENUM_CLASS(FOrdGreaterEqual)
-    STRINGISE_ENUM_CLASS(FOrdLess)
-    STRINGISE_ENUM_CLASS(FOrdLessEqual)
-    STRINGISE_ENUM_CLASS(FOrdNotEqual)
-    STRINGISE_ENUM_CLASS(FOrd)
-    STRINGISE_ENUM_CLASS(FUnord)
-    STRINGISE_ENUM_CLASS(FUnordEqual)
-    STRINGISE_ENUM_CLASS(FUnordGreater)
-    STRINGISE_ENUM_CLASS(FUnordGreaterEqual)
-    STRINGISE_ENUM_CLASS(FUnordLess)
-    STRINGISE_ENUM_CLASS(FUnordLessEqual)
-    STRINGISE_ENUM_CLASS(FUnordNotEqual)
-    STRINGISE_ENUM_CLASS(FOrdTrue)
-    STRINGISE_ENUM_CLASS(IEqual)
-    STRINGISE_ENUM_CLASS(INotEqual)
-    STRINGISE_ENUM_CLASS(UGreater)
-    STRINGISE_ENUM_CLASS(UGreaterEqual)
-    STRINGISE_ENUM_CLASS(ULess)
-    STRINGISE_ENUM_CLASS(ULessEqual)
-    STRINGISE_ENUM_CLASS(SGreater)
-    STRINGISE_ENUM_CLASS(SGreaterEqual)
-    STRINGISE_ENUM_CLASS(SLess)
-    STRINGISE_ENUM_CLASS(SLessEqual)
-    STRINGISE_ENUM_CLASS(Select)
-    STRINGISE_ENUM_CLASS(ExtractElement)
-    STRINGISE_ENUM_CLASS(InsertElement)
-    STRINGISE_ENUM_CLASS(ShuffleVector)
-    STRINGISE_ENUM_CLASS(InsertValue)
-    STRINGISE_ENUM_CLASS(Branch)
-    STRINGISE_ENUM_CLASS(Phi)
-    STRINGISE_ENUM_CLASS(Switch)
-    STRINGISE_ENUM_CLASS(Fence)
-    STRINGISE_ENUM_CLASS(CompareExchange)
-    STRINGISE_ENUM_CLASS(LoadAtomic)
-    STRINGISE_ENUM_CLASS(StoreAtomic)
-    STRINGISE_ENUM_CLASS(AtomicExchange)
-    STRINGISE_ENUM_CLASS(AtomicAdd)
-    STRINGISE_ENUM_CLASS(AtomicSub)
-    STRINGISE_ENUM_CLASS(AtomicAnd)
-    STRINGISE_ENUM_CLASS(AtomicNand)
-    STRINGISE_ENUM_CLASS(AtomicOr)
-    STRINGISE_ENUM_CLASS(AtomicXor)
-    STRINGISE_ENUM_CLASS(AtomicMax)
-    STRINGISE_ENUM_CLASS(AtomicMin)
-    STRINGISE_ENUM_CLASS(AtomicUMax)
-    STRINGISE_ENUM_CLASS(AtomicUMin)
-  }
-  END_ENUM_STRINGISE();
-}

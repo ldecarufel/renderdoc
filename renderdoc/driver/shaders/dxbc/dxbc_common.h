@@ -366,6 +366,7 @@ struct CBuffer
   } descriptor;
 
   rdcarray<CBufferVariable> variables;
+  bool hasReflectionData;
 };
 
 struct Reflection
@@ -413,6 +414,6 @@ public:
                          rdcarray<SourceVariableMapping> &locals) const = 0;
 };
 
-rdcstr BasicDemangle(rdcstr possiblyMangledName);
+rdcstr BasicDemangle(const rdcstr &possiblyMangledName);
 
 };

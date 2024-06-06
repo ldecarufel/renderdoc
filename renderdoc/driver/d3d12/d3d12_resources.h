@@ -1159,7 +1159,6 @@ class WrappedID3D12Resource
     : public WrappedDeviceChild12<ID3D12Resource, ID3D12Resource1, ID3D12Resource2>
 {
   static GPUAddressRangeTracker m_Addresses;
-  static rdcarray<ResourceId> m_bufferResources;
 
   WriteSerialiser &GetThreadSerialiser();
   size_t DeleteOverlappingAccStructsInRangeAtOffset(D3D12BufferOffset bufferOffset);
@@ -1169,6 +1168,8 @@ class WrappedID3D12Resource
   Threading::CriticalSection m_accStructResourcesCS;
   rdcflatmap<D3D12BufferOffset, D3D12AccelerationStructure *> m_accelerationStructMap;
   bool m_isAccelerationStructureResource = false;
+
+  UINT64 m_OrigAddress;
 
 public:
   ALLOCATE_WITH_WRAPPED_POOL(WrappedID3D12Resource, false);
@@ -1206,13 +1207,6 @@ public:
 
   bool IsAccelerationStructureResource() const { return m_isAccelerationStructureResource; }
   void MarkAsAccelerationStructureResource() { m_isAccelerationStructureResource = true; }
-  static void MarkAllBufferResourceFrameReferenced(D3D12ResourceManager *rm)
-  {
-    for(ResourceId id : m_bufferResources)
-    {
-      rm->MarkResourceFrameReferenced(id, eFrameRef_Read);
-    }
-  }
 
   static void RefBuffers(D3D12ResourceManager *rm);
   static void GetMappableIDs(D3D12ResourceManager *rm, const std::unordered_set<ResourceId> &refdIDs,
@@ -1231,6 +1225,8 @@ public:
     m_Addresses.GetResIDFromAddrAllowOutOfBounds(addr, id, offs);
   }
 
+  UINT64 GetOriginalVA() const { return m_OrigAddress; }
+
   // overload to just return the id in case the offset isn't needed
   static ResourceId GetResIDFromAddr(D3D12_GPU_VIRTUAL_ADDRESS addr)
   {
@@ -1248,9 +1244,10 @@ public:
   };
 
   WrappedID3D12Resource(ID3D12Resource *real, ID3D12Heap *heap, UINT64 HeapOffset,
-                        WrappedID3D12Device *device)
+                        WrappedID3D12Device *device, UINT64 origAddress = 0)
       : WrappedDeviceChild12(real, device)
   {
+    m_OrigAddress = origAddress;
     if(IsReplayMode(device->GetState()))
       device->AddReplayResource(GetResourceID(), this);
 
@@ -1281,8 +1278,6 @@ public:
       range.id = GetResourceID();
 
       m_Addresses.AddTo(range);
-
-      m_bufferResources.push_back(GetResourceID());
     }
   }
   virtual ~WrappedID3D12Resource();
